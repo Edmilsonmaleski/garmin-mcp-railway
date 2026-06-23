@@ -5,8 +5,6 @@ echo "=== Verificando tokens ===" >&2
 ls -la /root/.garminconnect/ >&2
 
 export GARMINTOKENS=/root/.garminconnect
-export HOST=0.0.0.0
-export PORT=${PORT:-8080}
 
 exec python << 'PYEOF'
 import os
@@ -39,6 +37,10 @@ for mod in [activity_management, health_wellness, user_profile, devices,
     application = mod.register_tools(application)
 application = workout_templates.register_resources(application)
 
-print(f"Iniciando servidor SSE em {os.environ.get('HOST')}:{os.environ.get('PORT')}", file=sys.stderr)
-application.run(transport='sse')
+port = int(os.environ.get('PORT', 8080))
+print(f"Iniciando servidor SSE via uvicorn em 0.0.0.0:{port}", file=sys.stderr)
+
+import uvicorn
+sse_app = application.get_asgi_app()
+uvicorn.run(sse_app, host='0.0.0.0', port=port)
 PYEOF
