@@ -13,10 +13,12 @@ COPY src/ ./src/
 
 RUN uv pip install -e .
 
+COPY tests/ ./tests/
+COPY pytest.ini ./
+
 RUN mkdir -p /root/.garminconnect && chmod 700 /root/.garminconnect
 
 COPY start_railway.sh ./
-RUN chmod +x start_railway.sh
+RUN chmod +x /app/start_railway.sh
 
-CMD ["./start_railway.sh"]
-# cache bust Seg 22 Jun 2026 22:30:45 -03
+ENTRYPOINT ["/app/start_railway.sh"]
