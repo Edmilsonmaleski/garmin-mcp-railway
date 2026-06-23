@@ -37,8 +37,10 @@ for mod in [activity_management, health_wellness, user_profile, devices,
     application = mod.register_tools(application)
 application = workout_templates.register_resources(application)
 
-port = int(os.environ.get('PORT', 8000))
+port = int(os.environ.get('PORT', 8080))
+host = '0.0.0.0'
 print(f"Iniciando servidor SSE na porta {port}", file=sys.stderr)
-application.run(transport='sse', port=port)
+os.environ['FASTMCP_PORT'] = str(port)
+os.environ['FASTMCP_HOST'] = host
+application.run(transport='sse')
 PYEOF
-# Seg 22 Jun 2026 22:54:48 -03
