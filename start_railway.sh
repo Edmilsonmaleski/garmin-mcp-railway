@@ -38,9 +38,6 @@ for mod in [activity_management, health_wellness, user_profile, devices,
 application = workout_templates.register_resources(application)
 
 port = int(os.environ.get('PORT', 8080))
-host = '0.0.0.0'
-print(f"Iniciando servidor SSE na porta {port}", file=sys.stderr)
-os.environ['FASTMCP_PORT'] = str(port)
-os.environ['FASTMCP_HOST'] = host
-application.run(transport='sse')
+print(f"Iniciando servidor SSE em 0.0.0.0:{port}", file=sys.stderr)
+application.run(transport='sse', host='0.0.0.0', port=port)
 PYEOF
