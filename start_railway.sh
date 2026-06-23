@@ -1,35 +1,45 @@
 #!/bin/bash
 set -e
 
-# Escreve token base64 para arquivo se variável existir
+# Escreve tokens do env var para o diretório esperado pelo servidor
 if [ -n "$GARMINTOKENS_BASE64" ]; then
     mkdir -p /root/.garminconnect
     echo "$GARMINTOKENS_BASE64" | base64 -d > /root/.garminconnect/garmin_tokens.json
-    echo "Tokens escritos com sucesso." >&2
+    echo "Tokens escritos em /root/.garminconnect/garmin_tokens.json" >&2
+    ls -la /root/.garminconnect/ >&2
 fi
 
-# Inicia o servidor em modo SSE na porta do Railway
+# Define o tokenstore para o diretório correto
+export GARMINTOKENS=/root/.garminconnect
+
+# Inicia o servidor em modo SSE
 exec python -c "
-from garmin_mcp import main, app
 import os
+import sys
+os.environ['GARMINTOKENS'] = '/root/.garminconnect'
 
-# Re-run main but with SSE transport
-from garmin_mcp import *
 import garmin_mcp as gm
+from mcp.server.fastmcp import FastMCP
+from garmin_mcp import (activity_management, health_wellness, user_profile, 
+    devices, gear_management, weight_management, challenges, training, 
+    workouts, workout_templates, data_management, womens_health, nutrition, 
+    workout_builders, courses, activity_analysis)
 
-# Initialize and run with SSE
 garmin_client = gm.init_api(gm.email, gm.password)
 if not garmin_client:
-    exit(1)
+    sys.exit(1)
 
-from mcp.server.fastmcp import FastMCP
-from garmin_mcp import activity_management, health_wellness, user_profile, devices, gear_management, weight_management, challenges, training, workouts, workout_templates, data_management, womens_health, nutrition, workout_builders, courses, activity_analysis
-
-for mod in [activity_management, health_wellness, user_profile, devices, gear_management, weight_management, challenges, training, workouts, data_management, womens_health, nutrition, workout_builders, courses, activity_analysis]:
+for mod in [activity_management, health_wellness, user_profile, devices, 
+            gear_management, weight_management, challenges, training, workouts, 
+            data_management, womens_health, nutrition, workout_builders, 
+            courses, activity_analysis]:
     mod.configure(garmin_client)
 
 application = FastMCP('Garmin Connect v1.0')
-for mod in [activity_management, health_wellness, user_profile, devices, gear_management, weight_management, challenges, training, workouts, data_management, womens_health, nutrition, workout_builders, courses, activity_analysis]:
+for mod in [activity_management, health_wellness, user_profile, devices,
+            gear_management, weight_management, challenges, training, workouts,
+            data_management, womens_health, nutrition, workout_builders,
+            courses, activity_analysis]:
     application = mod.register_tools(application)
 application = workout_templates.register_resources(application)
 
