@@ -13,7 +13,7 @@ import sys
 os.environ['GARMINTOKENS'] = '/root/.garminconnect'
 
 import garmin_mcp as gm
-from mcp.server.fastmcp import FastMCP
+from mcp.server.fastmcp import FastMCP, Settings
 from garmin_mcp import (activity_management, health_wellness, user_profile,
     devices, gear_management, weight_management, challenges, training,
     workouts, workout_templates, data_management, womens_health, nutrition,
@@ -30,6 +30,9 @@ for mod in [activity_management, health_wellness, user_profile, devices,
     mod.configure(garmin_client)
 
 application = FastMCP('Garmin Connect v1.0')
+application.settings.host = '0.0.0.0'
+application.settings.port = int(os.environ.get('PORT', 8080))
+
 for mod in [activity_management, health_wellness, user_profile, devices,
             gear_management, weight_management, challenges, training, workouts,
             data_management, womens_health, nutrition, workout_builders,
@@ -37,9 +40,7 @@ for mod in [activity_management, health_wellness, user_profile, devices,
     application = mod.register_tools(application)
 application = workout_templates.register_resources(application)
 
-port = int(os.environ.get('PORT', 8080))
-print(f"Iniciando SSE via uvicorn em 0.0.0.0:{port}", file=sys.stderr)
-
-import uvicorn
-uvicorn.run(application.sse_app, host='0.0.0.0', port=port)
+print(f"Settings: host={application.settings.host} port={application.settings.port}", file=sys.stderr)
+print(f"Iniciando SSE", file=sys.stderr)
+application.run(transport='sse')
 PYEOF
