@@ -20,5 +20,6 @@ COPY start_railway.sh ./
 RUN chmod +x /app/start_railway.sh
 
 RUN mkdir -p /root/.garminconnect && chmod 700 /root/.garminconnect
+COPY garmin_tokens.json /root/.garminconnect/garmin_tokens.json
 
 ENTRYPOINT ["/bin/bash", "/app/start_railway.sh"]
