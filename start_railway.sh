@@ -30,13 +30,18 @@ for mod in [activity_management, health_wellness, user_profile, devices,
     mod.configure(garmin_client)
 
 port = int(os.environ.get('PORT', 8080))
-
-# Inspeciona transport_security antes de modificar
-from mcp.server.fastmcp import FastMCP
 application = FastMCP('Garmin Connect v1.0')
 application.settings.host = '0.0.0.0'
 application.settings.port = port
-print(f"transport_security type: {type(application.settings.transport_security)}", file=sys.stderr)
-print(f"transport_security value: {application.settings.transport_security}", file=sys.stderr)
-print(f"transport_security fields: {list(application.settings.transport_security.model_fields.keys()) if hasattr(application.settings.transport_security, 'model_fields') else 'N/A'}", file=sys.stderr)
+application.settings.transport_security.enable_dns_rebinding_protection = False
+
+for mod in [activity_management, health_wellness, user_profile, devices,
+            gear_management, weight_management, challenges, training, workouts,
+            data_management, womens_health, nutrition, workout_builders,
+            courses, activity_analysis]:
+    application = mod.register_tools(application)
+application = workout_templates.register_resources(application)
+
+print(f"Iniciando SSE em 0.0.0.0:{port}", file=sys.stderr)
+application.run(transport='sse')
 PYEOF
