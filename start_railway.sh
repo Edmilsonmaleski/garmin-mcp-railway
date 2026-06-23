@@ -1,26 +1,37 @@
 #!/bin/bash
 set -e
 
-# Escreve tokens antes de qualquer import Python
+echo "=== Iniciando setup ===" >&2
+
+# Escreve token ANTES de qualquer import Python
 if [ -n "$GARMINTOKENS_BASE64" ]; then
     mkdir -p /root/.garminconnect
-    printf '%s' "$GARMINTOKENS_BASE64" | base64 -d > /root/.garminconnect/garmin_tokens.json
-    echo "Tokens escritos com sucesso" >&2
-    cat /root/.garminconnect/garmin_tokens.json | head -c 50 >&2
-    echo "" >&2
+    echo "$GARMINTOKENS_BASE64" | base64 -d > /root/.garminconnect/garmin_tokens.json
+    echo "=== Token escrito: $(wc -c < /root/.garminconnect/garmin_tokens.json) bytes ===" >&2
+else
+    echo "=== ERRO: GARMINTOKENS_BASE64 não definida! ===" >&2
+    exit 1
 fi
 
-# Define variável de ambiente ANTES de qualquer import
 export GARMINTOKENS=/root/.garminconnect
 
-exec python - << 'PYEOF'
+echo "=== Iniciando servidor Python ===" >&2
+
+exec python << 'PYEOF'
 import os
 import sys
 
-# Garante que tokenstore aponta para o lugar certo
 os.environ['GARMINTOKENS'] = '/root/.garminconnect'
 
-# Agora importa o módulo
+# Verifica se o arquivo existe antes de importar
+import json
+token_path = '/root/.garminconnect/garmin_tokens.json'
+if not os.path.exists(token_path):
+    print(f"ERRO: Token não encontrado em {token_path}", file=sys.stderr)
+    sys.exit(1)
+
+print(f"Token encontrado: {os.path.getsize(token_path)} bytes", file=sys.stderr)
+
 import garmin_mcp as gm
 from mcp.server.fastmcp import FastMCP
 from garmin_mcp import (activity_management, health_wellness, user_profile,
@@ -47,5 +58,6 @@ for mod in [activity_management, health_wellness, user_profile, devices,
 application = workout_templates.register_resources(application)
 
 port = int(os.environ.get('PORT', 8000))
+print(f"Iniciando servidor SSE na porta {port}", file=sys.stderr)
 application.run(transport='sse', port=port)
 PYEOF
