@@ -33,6 +33,7 @@ port = int(os.environ.get('PORT', 8080))
 application = FastMCP('Garmin Connect v1.0')
 application.settings.host = '0.0.0.0'
 application.settings.port = port
+application.settings.allowed_hosts = ['garmin-mcp-railway-production-2d12.up.railway.app', 'localhost', '127.0.0.1']
 
 for mod in [activity_management, health_wellness, user_profile, devices,
             gear_management, weight_management, challenges, training, workouts,
