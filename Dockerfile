@@ -19,3 +19,4 @@ COPY start_railway.sh ./
 RUN chmod +x start_railway.sh
 
 CMD ["./start_railway.sh"]
+# cache bust Seg 22 Jun 2026 22:30:45 -03
