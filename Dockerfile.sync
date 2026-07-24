@@ -1,0 +1,7 @@
+FROM python:3.12-slim
+WORKDIR /app
+RUN pip install garminconnect psycopg2-binary curl_cffi ua-generator
+RUN mkdir -p /root/.garminconnect && chmod 700 /root/.garminconnect
+COPY garmin_tokens.json /root/.garminconnect/garmin_tokens.json
+COPY daily_sync.py .
+CMD ["python3", "daily_sync.py"]
