@@ -7,8 +7,18 @@ os.environ['GARMINTOKENS'] = '/root/.garminconnect'
 tokenstore = '/root/.garminconnect'
 
 print("Autenticando no Garmin...", flush=True)
-garmin = Garmin(is_cn=False)
-garmin.login(tokenstore)
+try:
+    garmin = Garmin(is_cn=False)
+    garmin.login(tokenstore)
+    print("Login via token OK", flush=True)
+except Exception as e:
+    print(f"Token falhou ({e}), tentando login completo...", flush=True)
+    email = os.environ["GARMIN_EMAIL"]
+    password = os.environ["GARMIN_PASSWORD"]
+    garmin = Garmin(email=email, password=password, is_cn=False)
+    garmin.login()
+    garmin.client.dump(tokenstore)
+    print("Login completo OK, token renovado", flush=True)
 
 conn = psycopg2.connect(os.environ['DATABASE_URL'])
 cur = conn.cursor()
