@@ -56,14 +56,16 @@ def register_tools(app):
         return {"months": list(merged.values())}
 
     @app.tool()
-    def get_daily_timeseries(days: int = 180) -> dict:
-        """Get raw daily sleep + activity data for charting, most recent N days.
+    def get_daily_timeseries(days: int = 180, start_date: str = "", end_date: str = "") -> dict:
+        """Get raw daily sleep + activity data for charting.
         Args:
-            days: how many recent days to include (default 180)
+            days: how many recent days to include, used when start_date/end_date are not given (default 180)
+            start_date: optional explicit range start, format YYYY-MM-DD
+            end_date: optional explicit range end, format YYYY-MM-DD
         """
         conn = get_db_conn()
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        cur.execute("""
+        base_query = """
             SELECT s.date, s.sleep_hours, s.resting_hr, s.deep_sleep_pct, s.rem_sleep_pct,
                    COALESCE(a.total_km, 0) AS distance_km,
                    a.avg_hr_bpm
@@ -72,9 +74,11 @@ def register_tools(app):
                 SELECT date, SUM(distance_meters)/1000 AS total_km, AVG(avg_hr_bpm) AS avg_hr_bpm
                 FROM activities GROUP BY date
             ) a ON a.date = s.date
-            WHERE s.date >= (CURRENT_DATE - (%s || ' days')::interval)
-            ORDER BY s.date
-        """, (days,))
+        """
+        if start_date and end_date:
+            cur.execute(base_query + " WHERE s.date BETWEEN %s AND %s ORDER BY s.date", (start_date, end_date))
+        else:
+            cur.execute(base_query + " WHERE s.date >= (CURRENT_DATE - (%s || ' days')::interval) ORDER BY s.date", (days,))
         rows = cur.fetchall()
         conn.close()
         for r in rows:
@@ -82,21 +86,25 @@ def register_tools(app):
         return {"days": rows}
 
     @app.tool()
-    def get_sleep_performance_correlation(days: int = 180) -> dict:
-        """Get paired data of prior-night sleep vs same-day running performance (avg HR, pace),
-        for correlation analysis. Args: days: lookback window (default 180)
+    def get_sleep_performance_correlation(days: int = 180, start_date: str = "", end_date: str = "") -> dict:
+        """Get paired data of prior-night sleep vs same-day running performance (avg HR, pace), for correlation analysis.
+        Args:
+            days: lookback window, used when start_date/end_date are not given (default 180)
+            start_date: optional explicit range start, format YYYY-MM-DD
+            end_date: optional explicit range end, format YYYY-MM-DD
         """
         conn = get_db_conn()
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        cur.execute("""
+        base_query = """
             SELECT s.date, s.sleep_hours, s.deep_sleep_pct, s.rem_sleep_pct, s.resting_hr,
                    a.distance_meters, a.duration_seconds, a.avg_hr_bpm
             FROM daily_sleep s
             JOIN activities a ON a.date = s.date
-            WHERE s.date >= (CURRENT_DATE - (%s || ' days')::interval)
-              AND a.distance_meters IS NOT NULL AND a.duration_seconds IS NOT NULL
-            ORDER BY s.date
-        """, (days,))
+        """
+        if start_date and end_date:
+            cur.execute(base_query + " WHERE s.date BETWEEN %s AND %s AND a.distance_meters IS NOT NULL AND a.duration_seconds IS NOT NULL ORDER BY s.date", (start_date, end_date))
+        else:
+            cur.execute(base_query + " WHERE s.date >= (CURRENT_DATE - (%s || ' days')::interval) AND a.distance_meters IS NOT NULL AND a.duration_seconds IS NOT NULL ORDER BY s.date", (days,))
         rows = cur.fetchall()
         conn.close()
         result = []
@@ -116,5 +124,60 @@ def register_tools(app):
                 "pace_min_per_km": pace_min_km,
             })
         return {"pairs": result}
+
+    @app.tool()
+    def get_range_summary(start_date: str, end_date: str) -> dict:
+        """Get aggregated KPIs (sleep, RHR, distance, activities, pace) for an arbitrary date range.
+        Useful for comparing two custom periods (e.g. this month vs last month).
+        Args:
+            start_date: range start, format YYYY-MM-DD
+            end_date: range end, format YYYY-MM-DD
+        """
+        conn = get_db_conn()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute("""
+            SELECT
+                ROUND(AVG(sleep_hours)::numeric, 2) AS avg_sleep_hours,
+                ROUND(AVG(resting_hr)::numeric, 1) AS avg_resting_hr,
+                ROUND(AVG(deep_sleep_pct)::numeric, 1) AS avg_deep_pct,
+                ROUND(AVG(rem_sleep_pct)::numeric, 1) AS avg_rem_pct,
+                COUNT(*) AS days_with_data
+            FROM daily_sleep
+            WHERE date BETWEEN %s AND %s
+        """, (start_date, end_date))
+        sleep_row = cur.fetchone() or {}
+
+        cur.execute("""
+            SELECT
+                ROUND((SUM(distance_meters)/1000)::numeric, 1) AS total_km,
+                COUNT(*) AS num_activities,
+                ROUND(AVG(avg_hr_bpm)::numeric, 1) AS avg_hr,
+                SUM(distance_meters) AS total_distance_m,
+                SUM(duration_seconds) AS total_duration_s
+            FROM activities
+            WHERE date BETWEEN %s AND %s
+        """, (start_date, end_date))
+        act_row = cur.fetchone() or {}
+        conn.close()
+
+        avg_pace = None
+        if act_row.get('total_distance_m') and act_row.get('total_duration_s'):
+            km = float(act_row['total_distance_m']) / 1000
+            if km > 0:
+                avg_pace = round((float(act_row['total_duration_s']) / 60) / km, 2)
+
+        return {
+            "start_date": start_date,
+            "end_date": end_date,
+            "avg_sleep_hours": sleep_row.get('avg_sleep_hours'),
+            "avg_resting_hr": sleep_row.get('avg_resting_hr'),
+            "avg_deep_pct": sleep_row.get('avg_deep_pct'),
+            "avg_rem_pct": sleep_row.get('avg_rem_pct'),
+            "days_with_data": sleep_row.get('days_with_data'),
+            "total_km": act_row.get('total_km'),
+            "num_activities": act_row.get('num_activities'),
+            "avg_hr": act_row.get('avg_hr'),
+            "avg_pace_min_per_km": avg_pace,
+        }
 
     return app
