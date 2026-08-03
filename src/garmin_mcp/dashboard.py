@@ -97,7 +97,7 @@ def register_tools(app):
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         base_query = """
             SELECT s.date, s.sleep_hours, s.deep_sleep_pct, s.rem_sleep_pct, s.resting_hr,
-                   a.distance_meters, a.duration_seconds, a.avg_hr_bpm
+                   a.distance_meters, a.duration_seconds, a.avg_hr_bpm, a.activity_type
             FROM daily_sleep s
             JOIN activities a ON a.date = s.date
         """
@@ -122,8 +122,37 @@ def register_tools(app):
                 "resting_hr": r['resting_hr'],
                 "avg_hr_bpm": r['avg_hr_bpm'],
                 "pace_min_per_km": pace_min_km,
+                "distance_meters": float(r['distance_meters']) if r['distance_meters'] is not None else None,
+                "duration_seconds": float(r['duration_seconds']) if r['duration_seconds'] is not None else None,
+                "activity_type": r['activity_type'],
             })
         return {"pairs": result}
+
+    @app.tool()
+    def get_activities_raw(days: int = 540, start_date: str = "", end_date: str = "") -> dict:
+        """Get individual (non-aggregated) activities with their type, for client-side filtering/aggregation.
+        Args:
+            days: how many recent days to include, used when start_date/end_date are not given (default 540)
+            start_date: optional explicit range start, format YYYY-MM-DD
+            end_date: optional explicit range end, format YYYY-MM-DD
+        """
+        conn = get_db_conn()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        base_query = """
+            SELECT date, activity_type, name, distance_meters, duration_seconds, avg_hr_bpm, calories, steps
+            FROM activities
+        """
+        if start_date and end_date:
+            cur.execute(base_query + " WHERE date BETWEEN %s AND %s ORDER BY date", (start_date, end_date))
+        else:
+            cur.execute(base_query + " WHERE date >= (CURRENT_DATE - (%s || ' days')::interval) ORDER BY date", (days,))
+        rows = cur.fetchall()
+        conn.close()
+        for r in rows:
+            r['date'] = r['date'].isoformat()
+            r['distance_meters'] = float(r['distance_meters']) if r['distance_meters'] is not None else None
+            r['duration_seconds'] = float(r['duration_seconds']) if r['duration_seconds'] is not None else None
+        return {"activities": rows}
 
     @app.tool()
     def get_range_summary(start_date: str, end_date: str) -> dict:
