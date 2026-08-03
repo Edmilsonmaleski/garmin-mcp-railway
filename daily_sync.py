@@ -89,6 +89,3 @@ for offset in [1, 0]:
 
 conn.close()
 print("Sync completo.", flush=True)
-
-print(f"FIM: {len(acts or [])} atividades", flush=True)
-conn.close()
