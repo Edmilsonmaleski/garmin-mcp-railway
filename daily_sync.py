@@ -57,7 +57,7 @@ def sync_day(d):
         print(f"{ds}: sem dado de sono", flush=True)
 
     try:
-        acts = garmin.get_activities_by_date(ds, ds, "running")
+        acts = garmin.get_activities_by_date(ds, ds)
     except Exception as e:
         print(f"Erro atividades {ds}: {e}", flush=True)
         acts = []
