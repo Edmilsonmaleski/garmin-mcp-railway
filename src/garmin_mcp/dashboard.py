@@ -139,7 +139,7 @@ def register_tools(app):
         conn = get_db_conn()
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         base_query = """
-            SELECT date, activity_type, name, distance_meters, duration_seconds, avg_hr_bpm, calories, steps
+            SELECT date, activity_type, name, distance_meters, duration_seconds, avg_hr_bpm, calories, steps, avg_cadence, max_cadence
             FROM activities
         """
         if start_date and end_date:
@@ -152,6 +152,8 @@ def register_tools(app):
             r['date'] = r['date'].isoformat()
             r['distance_meters'] = float(r['distance_meters']) if r['distance_meters'] is not None else None
             r['duration_seconds'] = float(r['duration_seconds']) if r['duration_seconds'] is not None else None
+            r['avg_cadence'] = float(r['avg_cadence']) if r['avg_cadence'] is not None else None
+            r['max_cadence'] = float(r['max_cadence']) if r['max_cadence'] is not None else None
         return {"activities": rows}
 
     @app.tool()
