@@ -66,7 +66,7 @@ def register_tools(app):
         conn = get_db_conn()
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         base_query = """
-            SELECT s.date, s.sleep_hours, s.resting_hr, s.deep_sleep_pct, s.rem_sleep_pct,
+            SELECT s.date, s.sleep_hours, s.resting_hr, s.deep_sleep_pct, s.rem_sleep_pct, s.vo2max,
                    COALESCE(a.total_km, 0) AS distance_km,
                    a.avg_hr_bpm
             FROM daily_sleep s
