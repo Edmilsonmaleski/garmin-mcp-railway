@@ -1,31 +1,23 @@
 """
 Training and performance functions for Garmin Connect MCP Server
 """
-
 import json
 import datetime
 from typing import Any, Dict, List, Optional, Union
-
 # The garmin_client will be set by the main file
 garmin_client = None
-
 # Cache for activity type mapping
 _activity_type_cache: Optional[Dict[int, str]] = None
-
-
 def configure(client):
     """Configure the module with the Garmin client instance"""
     global garmin_client, _activity_type_cache
     garmin_client = client
     _activity_type_cache = None  # Reset cache when client changes
-
-
 def _get_activity_type_mapping() -> Dict[int, str]:
     """Get or build a cached mapping of activity type IDs to names"""
     global _activity_type_cache
     if _activity_type_cache is not None:
         return _activity_type_cache
-
     try:
         activity_types = garmin_client.get_activity_types()
         _activity_type_cache = {
@@ -35,10 +27,7 @@ def _get_activity_type_mapping() -> Dict[int, str]:
         }
     except Exception:
         _activity_type_cache = {}
-
     return _activity_type_cache
-
-
 def _map_contributor(
     contributor: Dict[str, Any], activity_type_mapping: Dict[int, str]
 ) -> Dict[str, Any]:
@@ -46,11 +35,9 @@ def _map_contributor(
     activity_type_id = contributor.get("activityTypeId")
     group = contributor.get("group")
     contribution = contributor.get("contribution")
-
     result: Dict[str, Any] = {
         "contribution_percent": round(contribution, 2) if contribution else None
     }
-
     if activity_type_id is not None:
         result["activity_type"] = activity_type_mapping.get(
             activity_type_id, f"unknown_{activity_type_id}"
@@ -65,19 +52,14 @@ def _map_contributor(
             8: "Other Activities",
         }
         result["group"] = group_names.get(group, f"group_{group}")
-
     return result
-
-
 def register_tools(app):
     """Register all training-related tools with the MCP server app"""
-
     @app.tool()
     async def get_progress_summary_between_dates(
         start_date: str, end_date: str, metric: str
     ) -> str:
         """Get progress summary for a metric between dates
-
         Args:
             start_date: Start date in YYYY-MM-DD format
             end_date: End date in YYYY-MM-DD format
@@ -87,16 +69,13 @@ def register_tools(app):
             summary_data = garmin_client.get_progress_summary_between_dates(
                 start_date, end_date, metric
             )
-
             if not summary_data:
                 return f"No progress summary found for {metric} between {start_date} and {end_date}."
-
             # The API returns a list with one item containing stats by activity type
             if isinstance(summary_data, list) and len(summary_data) > 0:
                 data = summary_data[0]
             else:
                 return f"Unexpected response format from API"
-
             # Curate to essential fields only
             curated = {
                 "metric": metric,
@@ -106,7 +85,6 @@ def register_tools(app):
                 "count_of_activities": data.get("countOfActivities"),
                 "stats_by_activity_type": {},
             }
-
             # Parse stats by activity type
             stats = data.get("stats", {})
             for activity_type, activity_stats in stats.items():
@@ -120,38 +98,30 @@ def register_tools(app):
                             "min": metric_data.get("min"),
                             "max": metric_data.get("max"),
                         }
-
             # Remove None values
             curated = {k: v for k, v in curated.items() if v is not None}
-
             return json.dumps(curated, indent=2)
         except Exception as e:
             return f"Error retrieving progress summary: {str(e)}"
-
     @app.tool()
     async def get_hill_score(start_date: str, end_date: str) -> str:
         """Get hill score data between dates
-
         Args:
             start_date: Start date in YYYY-MM-DD format
             end_date: End date in YYYY-MM-DD format
         """
         try:
             hill_score_data = garmin_client.get_hill_score(start_date, end_date)
-
             if not hill_score_data:
                 return f"No hill score data found between {start_date} and {end_date}."
-
             # Parse the period average and max score
             period_avg_score = hill_score_data.get("periodAvgScore", {})
             avg_score = (
                 next(iter(period_avg_score.values())) if period_avg_score else None
             )
-
             # Get the most recent daily score (first in list)
             daily_scores = hill_score_data.get("hillScoreDTOList", [])
             latest_score = daily_scores[0] if daily_scores else {}
-
             # Curate to essential fields only
             curated = {
                 "start_date": start_date,
@@ -177,18 +147,14 @@ def register_tools(app):
                     for score in daily_scores
                 ],
             }
-
             # Remove None values
             curated = {k: v for k, v in curated.items() if v is not None}
-
             return json.dumps(curated, indent=2)
         except Exception as e:
             return f"Error retrieving hill score data: {str(e)}"
-
     @app.tool()
     async def get_endurance_score(start_date: str, end_date: str) -> str:
         """Get endurance score data between dates
-
         Args:
             start_date: Start date in YYYY-MM-DD format
             end_date: End date in YYYY-MM-DD format
@@ -197,13 +163,10 @@ def register_tools(app):
             endurance_data = garmin_client.get_endurance_score(start_date, end_date)
             if not endurance_data:
                 return f"No endurance score data found between {start_date} and {end_date}."
-
             # Get activity type mapping for human-readable names
             activity_type_mapping = _get_activity_type_mapping()
-
             # Extract the current endurance score DTO
             score_dto = endurance_data.get("enduranceScoreDTO", {})
-
             # Map classification number to label
             classification_labels = {
                 1: "recreational",
@@ -222,7 +185,6 @@ def register_tools(app):
                 if classification_id is not None
                 else None
             )
-
             # Process contributors with activity type names
             raw_contributors = score_dto.get("contributors", [])
             contributors = (
@@ -230,7 +192,6 @@ def register_tools(app):
                 if raw_contributors
                 else None
             )
-
             # Process weekly breakdown from groupMap
             group_map = endurance_data.get("groupMap", {})
             weekly_breakdown = []
@@ -249,7 +210,6 @@ def register_tools(app):
                         ),
                     }
                 )
-
             # Curate to essential fields
             curated = {
                 "start_date": start_date,
@@ -284,7 +244,6 @@ def register_tools(app):
                 # Weekly breakdown
                 "weekly_breakdown": weekly_breakdown if weekly_breakdown else None,
             }
-
             # Remove None values recursively
             def remove_none(obj):
                 if isinstance(obj, dict):
@@ -292,17 +251,13 @@ def register_tools(app):
                 elif isinstance(obj, list):
                     return [remove_none(item) for item in obj]
                 return obj
-
             curated = remove_none(curated)
-
             return json.dumps(curated, indent=2)
         except Exception as e:
             return f"Error retrieving endurance score data: {str(e)}"
-
     @app.tool()
     async def get_training_effect(activity_id: int) -> str:
         """Get training effect data for a specific activity
-
         Args:
             activity_id: ID of the activity to retrieve training effect for
         """
@@ -312,10 +267,8 @@ def register_tools(app):
             activity = garmin_client.get_activity(activity_id)
             if not activity:
                 return f"No activity found with ID {activity_id}."
-
             # Extract training effect data from activity summary
             summary = activity.get("summaryDTO", {})
-
             # Curate to essential fields only
             curated = {
                 "activity_id": activity_id,
@@ -334,18 +287,14 @@ def register_tools(app):
                 # Additional metrics that may be available
                 "performance_condition": summary.get("performanceCondition"),
             }
-
             # Remove None values
             curated = {k: v for k, v in curated.items() if v is not None}
-
             return json.dumps(curated, indent=2)
         except Exception as e:
             return f"Error retrieving training effect data: {str(e)}"
-
     @app.tool()
     async def get_hrv_data(date: str, return_timeseries: bool = False) -> str:
         """Get Heart Rate Variability (HRV) data
-
         Args:
             date: Date in YYYY-MM-DD format
             return_timeseries: If True, include detailed 5-minute HRV readings (can be large)
@@ -354,11 +303,9 @@ def register_tools(app):
             hrv_data = garmin_client.get_hrv_data(date)
             if not hrv_data:
                 return f"No HRV data found for {date}."
-
             # Extract the summary from hrvSummary key
             summary = hrv_data.get("hrvSummary", {})
             baseline = summary.get("baseline", {})
-
             # Curate to essential fields only
             curated = {
                 "date": summary.get("calendarDate") or date,
@@ -378,7 +325,6 @@ def register_tools(app):
                 "sleep_start": hrv_data.get("sleepStartTimestampLocal"),
                 "sleep_end": hrv_data.get("sleepEndTimestampLocal"),
             }
-
             # Optionally include the detailed HRV readings timeseries
             if return_timeseries:
                 readings = hrv_data.get("hrvReadings", [])
@@ -390,18 +336,14 @@ def register_tools(app):
                     for r in readings
                 ]
                 curated["readings_count"] = len(readings)
-
             # Remove None values
             curated = {k: v for k, v in curated.items() if v is not None}
-
             return json.dumps(curated, indent=2)
         except Exception as e:
             return f"Error retrieving HRV data: {str(e)}"
-
     @app.tool()
     async def get_fitnessage_data(date: str, details: bool = False) -> str:
         """Get fitness age data
-
         Args:
             date: Date in YYYY-MM-DD format
             details: If True, include component breakdown (BMI, RHR, vigorous activity)
@@ -411,14 +353,12 @@ def register_tools(app):
             fitness_age = garmin_client.get_fitnessage_data(date)
             if not fitness_age:
                 return f"No fitness age data found for {date}."
-
             # Calculate age difference
             chrono_age = fitness_age.get("chronologicalAge")
             fit_age = fitness_age.get("fitnessAge")
             age_diff = None
             if chrono_age is not None and fit_age is not None:
                 age_diff = round(chrono_age - fit_age, 1)
-
             # Curate to essential fields
             curated = {
                 "date": date,
@@ -437,18 +377,14 @@ def register_tools(app):
                 ),
                 "last_updated": fitness_age.get("lastUpdated"),
             }
-
             # Optionally include component details
             if details:
                 components = fitness_age.get("components", {})
                 curated_components = {}
-
                 for comp_name, comp_data in components.items():
                     if not isinstance(comp_data, dict):
                         continue
-
                     comp_info = {"value": comp_data.get("value")}
-
                     # Add target and improvement info if present
                     if comp_data.get("targetValue") is not None:
                         comp_info["target"] = comp_data.get("targetValue")
@@ -464,26 +400,19 @@ def register_tools(app):
                         comp_info["stale"] = comp_data.get("stale")
                     if comp_data.get("lastMeasurementDate") is not None:
                         comp_info["last_measurement"] = comp_data.get("lastMeasurementDate")
-
                     curated_components[comp_name] = comp_info
-
                 if curated_components:
                     curated["components"] = curated_components
-
             # Remove None values
             curated = {k: v for k, v in curated.items() if v is not None}
-
             return json.dumps(curated, indent=2)
         except Exception as e:
             return f"Error retrieving fitness age data: {str(e)}"
-
     @app.tool()
     async def get_training_status(date: str) -> str:
         """Get training status with curated metrics
-
         Returns comprehensive training status including load, VO2 max, recovery,
         and training readiness indicators.
-
         Args:
             date: Date in YYYY-MM-DD format
         """
@@ -491,30 +420,26 @@ def register_tools(app):
             status = garmin_client.get_training_status(date)
             if not status:
                 return f"No training status data found for {date}."
-
-            # Extract from nested structure
-            recent_status = status.get("mostRecentTrainingStatus", {})
-            latest_data = recent_status.get("latestTrainingStatusData", {})
-
+            # Extract from nested structure (Garmin returns these keys as explicit
+            # null on days with no new computation, not just omitted - guard with `or {}`)
+            recent_status = status.get("mostRecentTrainingStatus") or {}
+            latest_data = recent_status.get("latestTrainingStatusData") or {}
             # Get first device data (usually the primary device)
             device_data = {}
             for device_id, data in latest_data.items():
-                device_data = data
+                device_data = data or {}
                 break
-
-            acwr_data = device_data.get("acuteTrainingLoadDTO", {})
-
+            acwr_data = device_data.get("acuteTrainingLoadDTO") or {}
             # VO2 Max data
-            vo2_data = status.get("mostRecentVO2Max", {}).get("generic", {})
-
+            vo2_section = status.get("mostRecentVO2Max") or {}
+            vo2_data = vo2_section.get("generic") or {}
             # Training load balance
-            load_balance = status.get("mostRecentTrainingLoadBalance", {})
-            load_map = load_balance.get("metricsTrainingLoadBalanceDTOMap", {})
+            load_balance = status.get("mostRecentTrainingLoadBalance") or {}
+            load_map = load_balance.get("metricsTrainingLoadBalanceDTOMap") or {}
             load_data = {}
             for device_id, data in load_map.items():
-                load_data = data
+                load_data = data or {}
                 break
-
             # Curate to essential fields only - remove userIds
             curated = {
                 "date": device_data.get("calendarDate", date),
@@ -544,26 +469,20 @@ def register_tools(app):
                     "trainingBalanceFeedbackPhrase"
                 ),
             }
-
             # Remove None values
             curated = {k: v for k, v in curated.items() if v is not None}
-
             return json.dumps(curated, indent=2)
         except Exception as e:
             return f"Error retrieving training status data: {str(e)}"
-
     @app.tool()
     async def get_cycling_ftp() -> str:
         """Get the latest cycling Functional Threshold Power (FTP) data.
-
         Returns the most recent cycling FTP estimate available from Garmin.
         """
         try:
             ftp_data = garmin_client.get_cycling_ftp()
-
             if not ftp_data:
                 return "No cycling FTP data found"
-
             curated = {
                 "sport": ftp_data.get("sport"),
                 "functional_threshold_power_watts": ftp_data.get(
@@ -573,24 +492,19 @@ def register_tools(app):
                 "is_stale": ftp_data.get("isStale"),
                 "biometric_source_type": ftp_data.get("biometricSourceType"),
             }
-
             curated = {k: v for k, v in curated.items() if v is not None}
-
             return json.dumps(curated, indent=2)
         except Exception as e:
             return f"Error retrieving cycling FTP data: {str(e)}"
-
     @app.tool()
     async def get_lactate_threshold(
         start_date: Optional[str] = None,
         end_date: Optional[str] = None,
     ) -> str:
         """Get lactate threshold data
-
         Returns lactate threshold information, which is the exercise intensity at
         which lactate starts to accumulate in the blood. This is a key metric for
         endurance training.
-
         Args:
             start_date: Start date in YYYY-MM-DD format (optional, omit for latest)
             end_date: End date in YYYY-MM-DD format (optional, omit for latest)
@@ -605,12 +519,10 @@ def register_tools(app):
                 )
             else:
                 threshold = garmin_client.get_lactate_threshold(latest=True)
-
             if not threshold:
                 if start_date and end_date:
                     return f"No lactate threshold data found between {start_date} and {end_date}"
                 return "No lactate threshold data found"
-
             # Handle different response formats based on query type
             if start_date and end_date:
                 # Historical range format: {speed: [...], heartRate: [...], power: [...]}
@@ -618,7 +530,6 @@ def register_tools(app):
                     "start_date": start_date,
                     "end_date": end_date,
                 }
-
                 # Process speed history
                 speed_history = threshold.get("speed", [])
                 if speed_history:
@@ -630,7 +541,6 @@ def register_tools(app):
                         }
                         for entry in speed_history
                     ]
-
                 # Process heart rate history
                 hr_history = threshold.get("heartRate", [])
                 if hr_history:
@@ -642,7 +552,6 @@ def register_tools(app):
                         }
                         for entry in hr_history
                     ]
-
                 # Process power history
                 power_history = threshold.get("power", [])
                 if power_history:
@@ -658,7 +567,6 @@ def register_tools(app):
                 # Latest format: {speed_and_heart_rate: {...}, power: {...}}
                 speed_hr = threshold.get("speed_and_heart_rate", {})
                 power = threshold.get("power", {})
-
                 curated = {
                     # Speed and heart rate data
                     "lactate_threshold_speed_mps": speed_hr.get("speed"),
@@ -675,18 +583,14 @@ def register_tools(app):
                     "power_date": power.get("calendarDate"),
                     "is_stale": power.get("isStale"),
                 }
-
             # Remove None values
             curated = {k: v for k, v in curated.items() if v is not None}
-
             return json.dumps(curated, indent=2)
         except Exception as e:
             return f"Error retrieving lactate threshold data: {str(e)}"
-
     @app.tool()
     async def request_reload(date: str) -> str:
         """Request reload of epoch data
-
         Args:
             date: Date in YYYY-MM-DD format
         """
@@ -695,18 +599,14 @@ def register_tools(app):
             return json.dumps(result, indent=2)
         except Exception as e:
             return f"Error requesting data reload: {str(e)}"
-
     @app.tool()
     async def get_training_load_trend(start_date: str, end_date: str) -> str:
         """Get the Performance Management Chart (CTL/ATL/TSB) over a date range.
-
         Returns Chronic Training Load (CTL, 42-day fitness), Acute Training Load (ATL, 7-day fatigue),
         Training Stress Balance (TSB = CTL - ATL, form/freshness), and Acute:Chronic Workload Ratio
         (ACWR) per day. Use this to assess whether the athlete is building fitness, peaking, or
         accumulating too much fatigue.
-
         Recommended range: 4-8 weeks. Maximum: 90 days.
-
         Args:
             start_date: Start date in YYYY-MM-DD format
             end_date: End date in YYYY-MM-DD format
@@ -717,13 +617,11 @@ def register_tools(app):
             end = datetime.date.fromisoformat(end_date)
         except ValueError as e:
             return f"Invalid date format: {e}. Use YYYY-MM-DD."
-
         days = (end - start).days + 1
         if days > MAX_DAYS:
             return f"Date range too large ({days} days). Maximum is {MAX_DAYS} days."
         if days < 1:
             return "end_date must be on or after start_date."
-
         trend = []
         current = start
         while current <= end:
@@ -732,11 +630,12 @@ def register_tools(app):
                 data = garmin_client.get_training_status(date_str)
                 if data:
                     status_data = (
-                        data.get("mostRecentTrainingStatus", {})
-                        .get("latestTrainingStatusData", {})
+                        (data.get("mostRecentTrainingStatus") or {})
+                        .get("latestTrainingStatusData") or {}
                     )
-                    atl_dto = status_data.get("acuteTrainingLoadDTO", {})
-                    vo2_data = data.get("mostRecentVO2Max", {}).get("generic", {})
+                    atl_dto = status_data.get("acuteTrainingLoadDTO") or {}
+                    vo2_section = data.get("mostRecentVO2Max") or {}
+                    vo2_data = vo2_section.get("generic") or {}
                     entry: Dict[str, Any] = {"date": date_str}
                     atl = atl_dto.get("dailyTrainingLoadAcute")
                     ctl = atl_dto.get("dailyTrainingLoadChronic")
@@ -752,7 +651,7 @@ def register_tools(app):
                     acwr_status = atl_dto.get("acwrStatus")
                     if acwr_status:
                         entry["acwr_status"] = acwr_status
-                    ts = status_data.get("trainingStatusDTO", {})
+                    ts = status_data.get("trainingStatusDTO") or {}
                     ts_label = ts.get("trainingStatusCyclingFeedbackPhrase") or ts.get("trainingStatusFeedbackPhrase")
                     if ts_label:
                         entry["training_status"] = ts_label
@@ -764,27 +663,21 @@ def register_tools(app):
             except Exception:
                 pass  # skip days with no data
             current += datetime.timedelta(days=1)
-
         if not trend:
             return f"No training load data found between {start_date} and {end_date}."
-
         return json.dumps({
             "start_date": start_date,
             "end_date": end_date,
             "days_with_data": len(trend),
             "trend": trend,
         }, indent=2)
-
     @app.tool()
     async def get_hrv_trend(start_date: str, end_date: str) -> str:
         """Get HRV (Heart Rate Variability) trend over a date range.
-
         Returns daily HRV values and weekly rolling averages. Single-day HRV is too noisy
         to act on — use this tool to identify baseline shifts that signal accumulated fatigue
         or recovery. A drop of >10ms from the 7-day baseline warrants reducing training load.
-
         Recommended range: 7-21 days. Maximum: 30 days.
-
         Args:
             start_date: Start date in YYYY-MM-DD format
             end_date: End date in YYYY-MM-DD format
@@ -795,13 +688,11 @@ def register_tools(app):
             end = datetime.date.fromisoformat(end_date)
         except ValueError as e:
             return f"Invalid date format: {e}. Use YYYY-MM-DD."
-
         days = (end - start).days + 1
         if days > MAX_DAYS:
             return f"Date range too large ({days} days). Maximum is {MAX_DAYS} days."
         if days < 1:
             return "end_date must be on or after start_date."
-
         trend = []
         current = start
         while current <= end:
@@ -831,16 +722,13 @@ def register_tools(app):
             except Exception:
                 pass
             current += datetime.timedelta(days=1)
-
         if not trend:
             return f"No HRV data found between {start_date} and {end_date}."
-
         # Compute 7-day rolling average from the collected data
         hrv_values = [e.get("last_night_avg_hrv_ms") for e in trend if e.get("last_night_avg_hrv_ms") is not None]
         rolling_avg = None
         if hrv_values:
             rolling_avg = round(sum(hrv_values) / len(hrv_values), 1)
-
         return json.dumps({
             "start_date": start_date,
             "end_date": end_date,
@@ -848,20 +736,15 @@ def register_tools(app):
             "period_avg_hrv_ms": rolling_avg,
             "trend": trend,
         }, indent=2)
-
     @app.tool()
     async def get_vo2max_trend(start_date: str, end_date: str) -> str:
         """Get VO2 max trend over a date range.
-
         Returns daily VO2 max estimates from Garmin's FirstBeat algorithm. Use this to track
         whether training is producing fitness gains over weeks or months. Flat or declining
         VO2 max over 4+ weeks suggests insufficient training stimulus or overreaching.
-
         Note: VO2 max estimates are smoothed and update gradually — daily changes of <0.5
         are within normal noise. Focus on the 4-6 week trend direction.
-
         Recommended range: 4-12 weeks. Maximum: 90 days.
-
         Args:
             start_date: Start date in YYYY-MM-DD format
             end_date: End date in YYYY-MM-DD format
@@ -872,13 +755,11 @@ def register_tools(app):
             end = datetime.date.fromisoformat(end_date)
         except ValueError as e:
             return f"Invalid date format: {e}. Use YYYY-MM-DD."
-
         days = (end - start).days + 1
         if days > MAX_DAYS:
             return f"Date range too large ({days} days). Maximum is {MAX_DAYS} days."
         if days < 1:
             return "end_date must be on or after start_date."
-
         trend = []
         last_vo2 = None
         current = start
@@ -887,7 +768,8 @@ def register_tools(app):
             try:
                 data = garmin_client.get_training_status(date_str)
                 if data:
-                    vo2_data = data.get("mostRecentVO2Max", {}).get("generic", {})
+                    vo2_section = data.get("mostRecentVO2Max") or {}
+                    vo2_data = vo2_section.get("generic") or {}
                     vo2 = vo2_data.get("vo2MaxValue")
                     if vo2 is not None:
                         vo2_rounded = round(vo2, 1)
@@ -897,14 +779,11 @@ def register_tools(app):
             except Exception:
                 pass
             current += datetime.timedelta(days=1)
-
         if not trend:
             return f"No VO2 max data found between {start_date} and {end_date}."
-
         first_vo2 = trend[0]["vo2_max"] if trend else None
         latest_vo2 = trend[-1]["vo2_max"] if trend else None
         change = round(latest_vo2 - first_vo2, 1) if (first_vo2 and latest_vo2) else None
-
         return json.dumps({
             "start_date": start_date,
             "end_date": end_date,
@@ -914,17 +793,13 @@ def register_tools(app):
             "change": change,
             "trend": trend,
         }, indent=2)
-
     @app.tool()
     async def get_respiration_trend(start_date: str, end_date: str) -> str:
         """Get overnight respiration rate trend over a date range.
-
         Elevated resting respiration rate (compared to personal baseline) is an early
         warning sign for overreaching, illness, or poor recovery. Use this alongside HRV
         trend for a complete recovery picture.
-
         Recommended range: 7-21 days. Maximum: 30 days.
-
         Args:
             start_date: Start date in YYYY-MM-DD format
             end_date: End date in YYYY-MM-DD format
@@ -935,13 +810,11 @@ def register_tools(app):
             end = datetime.date.fromisoformat(end_date)
         except ValueError as e:
             return f"Invalid date format: {e}. Use YYYY-MM-DD."
-
         days = (end - start).days + 1
         if days > MAX_DAYS:
             return f"Date range too large ({days} days). Maximum is {MAX_DAYS} days."
         if days < 1:
             return "end_date must be on or after start_date."
-
         trend = []
         current = start
         while current <= end:
@@ -967,13 +840,10 @@ def register_tools(app):
             except Exception:
                 pass
             current += datetime.timedelta(days=1)
-
         if not trend:
             return f"No respiration data found between {start_date} and {end_date}."
-
         sleep_values = [e["avg_sleep_breaths_per_min"] for e in trend if "avg_sleep_breaths_per_min" in e]
         avg_sleep_overall = round(sum(sleep_values) / len(sleep_values), 1) if sleep_values else None
-
         return json.dumps({
             "start_date": start_date,
             "end_date": end_date,
@@ -981,5 +851,5 @@ def register_tools(app):
             "period_avg_sleep_breaths_per_min": avg_sleep_overall,
             "trend": trend,
         }, indent=2)
-
     return app
+
