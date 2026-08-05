@@ -42,15 +42,23 @@ def sync_day(d):
             rhr = stats.get('restingHeartRate')
         except Exception:
             pass
+        vo2max = None
+        try:
+            mm = garmin.get_max_metrics(ds)
+            if mm:
+                generic = (mm[0] or {}).get('generic') or {}
+                vo2max = generic.get('vo2MaxValue')
+        except Exception:
+            pass
         cur.execute("""
-            INSERT INTO daily_sleep (date, sleep_hours, sleep_seconds, deep_sleep_pct, light_sleep_pct, rem_sleep_pct, awake_seconds, resting_hr)
-            VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
+            INSERT INTO daily_sleep (date, sleep_hours, sleep_seconds, deep_sleep_pct, light_sleep_pct, rem_sleep_pct, awake_seconds, resting_hr, vo2max)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
             ON CONFLICT (date) DO UPDATE SET
                 sleep_hours=EXCLUDED.sleep_hours, sleep_seconds=EXCLUDED.sleep_seconds,
                 deep_sleep_pct=EXCLUDED.deep_sleep_pct, light_sleep_pct=EXCLUDED.light_sleep_pct,
                 rem_sleep_pct=EXCLUDED.rem_sleep_pct, awake_seconds=EXCLUDED.awake_seconds,
-                resting_hr=EXCLUDED.resting_hr
-        """, (ds, round(sleep_seconds/3600,2), sleep_seconds, round(deep/total*100,2), round(light/total*100,2), round(rem/total*100,2), awake, rhr))
+                resting_hr=EXCLUDED.resting_hr, vo2max=EXCLUDED.vo2max
+        """, (ds, round(sleep_seconds/3600,2), sleep_seconds, round(deep/total*100,2), round(light/total*100,2), round(rem/total*100,2), awake, rhr, vo2max))
         conn.commit()
         print(f"{ds}: sono OK ({sleep_seconds/3600:.1f}h, rhr={rhr})", flush=True)
     else:
