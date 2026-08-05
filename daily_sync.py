@@ -63,20 +63,24 @@ def sync_day(d):
         acts = []
 
     for a in acts or []:
+        avg_cadence = a.get('averageRunningCadenceInStepsPerMinute')
+        max_cadence = a.get('maxRunningCadenceInStepsPerMinute')
         cur.execute("""
-            INSERT INTO activities (activity_id, date, name, activity_type, start_time, distance_meters, duration_seconds, calories, avg_hr_bpm, max_hr_bpm, steps, elevation_gain_meters, elevation_loss_meters)
-            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+            INSERT INTO activities (activity_id, date, name, activity_type, start_time, distance_meters, duration_seconds, calories, avg_hr_bpm, max_hr_bpm, steps, elevation_gain_meters, elevation_loss_meters, avg_cadence, max_cadence)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
             ON CONFLICT (activity_id) DO UPDATE SET
                 distance_meters=EXCLUDED.distance_meters, duration_seconds=EXCLUDED.duration_seconds,
                 calories=EXCLUDED.calories, avg_hr_bpm=EXCLUDED.avg_hr_bpm, max_hr_bpm=EXCLUDED.max_hr_bpm,
                 steps=EXCLUDED.steps, elevation_gain_meters=EXCLUDED.elevation_gain_meters,
-                elevation_loss_meters=EXCLUDED.elevation_loss_meters
+                elevation_loss_meters=EXCLUDED.elevation_loss_meters,
+                avg_cadence=EXCLUDED.avg_cadence, max_cadence=EXCLUDED.max_cadence
         """, (
             a.get('activityId'), ds, a.get('activityName'),
             a.get('activityType', {}).get('typeKey'), a.get('startTimeLocal'),
             a.get('distance'), a.get('duration'), a.get('calories'),
             a.get('averageHR'), a.get('maxHR'), a.get('steps'),
-            a.get('elevationGain'), a.get('elevationLoss')
+            a.get('elevationGain'), a.get('elevationLoss'),
+            avg_cadence, max_cadence
         ))
     conn.commit()
     print(f"{ds}: FIM ({len(acts or [])} atividades)", flush=True)
