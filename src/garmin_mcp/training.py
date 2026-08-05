@@ -739,17 +739,17 @@ def register_tools(app):
     @app.tool()
     async def get_vo2max_trend(start_date: str, end_date: str) -> str:
         """Get VO2 max trend over a date range.
-        Returns daily VO2 max estimates from Garmin's FirstBeat algorithm. Use this to track
-        whether training is producing fitness gains over weeks or months. Flat or declining
-        VO2 max over 4+ weeks suggests insufficient training stimulus or overreaching.
-        Note: VO2 max estimates are smoothed and update gradually — daily changes of <0.5
-        are within normal noise. Focus on the 4-6 week trend direction.
-        Recommended range: 4-12 weeks. Maximum: 90 days.
+        Returns VO2 max estimates from Garmin's FirstBeat algorithm. Garmin only recomputes
+        this occasionally (roughly monthly, not daily), so expect a handful of data points
+        rather than one per day. Use this to track whether training is producing fitness
+        gains over months. Flat or declining VO2 max over months suggests insufficient
+        training stimulus or overreaching.
+        Maximum range: 730 days (2 years).
         Args:
             start_date: Start date in YYYY-MM-DD format
             end_date: End date in YYYY-MM-DD format
         """
-        MAX_DAYS = 90
+        MAX_DAYS = 730
         try:
             start = datetime.date.fromisoformat(start_date)
             end = datetime.date.fromisoformat(end_date)
@@ -760,30 +760,28 @@ def register_tools(app):
             return f"Date range too large ({days} days). Maximum is {MAX_DAYS} days."
         if days < 1:
             return "end_date must be on or after start_date."
+        try:
+            data = garmin_client.connectapi(
+                f"/metrics-service/metrics/maxmet/monthly/{start_date}/{end_date}"
+            )
+        except Exception as e:
+            return f"Error retrieving VO2 max trend: {str(e)}"
+        if not data:
+            return f"No VO2 max data found between {start_date} and {end_date}."
         trend = []
-        last_vo2 = None
-        current = start
-        while current <= end:
-            date_str = current.isoformat()
-            try:
-                data = garmin_client.get_training_status(date_str)
-                if data:
-                    vo2_section = data.get("mostRecentVO2Max") or {}
-                    vo2_data = vo2_section.get("generic") or {}
-                    vo2 = vo2_data.get("vo2MaxValue")
-                    if vo2 is not None:
-                        vo2_rounded = round(vo2, 1)
-                        if vo2_rounded != last_vo2:  # deduplicate unchanged values
-                            trend.append({"date": date_str, "vo2_max": vo2_rounded})
-                            last_vo2 = vo2_rounded
-            except Exception:
-                pass
-            current += datetime.timedelta(days=1)
+        for entry in data:
+            generic = (entry or {}).get("generic") or {}
+            date_str = generic.get("calendarDate")
+            vo2 = generic.get("vo2MaxValue")
+            if date_str is None or vo2 is None:
+                continue
+            trend.append({"date": date_str, "vo2_max": round(vo2, 1)})
+        trend.sort(key=lambda e: e["date"])
         if not trend:
             return f"No VO2 max data found between {start_date} and {end_date}."
-        first_vo2 = trend[0]["vo2_max"] if trend else None
-        latest_vo2 = trend[-1]["vo2_max"] if trend else None
-        change = round(latest_vo2 - first_vo2, 1) if (first_vo2 and latest_vo2) else None
+        first_vo2 = trend[0]["vo2_max"]
+        latest_vo2 = trend[-1]["vo2_max"]
+        change = round(latest_vo2 - first_vo2, 1)
         return json.dumps({
             "start_date": start_date,
             "end_date": end_date,
@@ -852,4 +850,3 @@ def register_tools(app):
             "trend": trend,
         }, indent=2)
     return app
-
