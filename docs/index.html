@@ -1,1 +1,811 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Painel Garmin — Sono &times; Performance</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 20px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #f7f8fa; color: #1a1d23;
+  }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .subtitle { color: #6b7280; font-size: 13px; margin: 0 0 20px; }
+  .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 16px; margin-bottom: 20px; }
+  .card h2 { font-size: 14px; margin: 0 0 12px; color: #1a1d23; }
+  .chart-wrap { position: relative; height: 260px; }
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #f0f1f3; }
+  th { color: #6b7280; font-weight: 500; }
+  tr:last-child td { border-bottom: none; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 720px) { .grid2 { grid-template-columns: 1fr; } .controls-row { grid-template-columns: 1fr !important; } }
+  .corr-note { font-size: 12px; color: #6b7280; margin-top: 8px; line-height: 1.5; }
+  .corr-value { font-weight: 700; }
+  .pos { color: #059669; }
+  .neg { color: #dc2626; }
+  .loading { color: #9ca3af; font-size: 13px; padding: 40px 0; text-align: center; }
+  .err { color: #dc2626; font-size: 12.5px; }
 
+  .controls-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .control-group label { display: block; font-size: 11px; color: #6b7280; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 6px; }
+  .presets { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+  .preset-btn {
+    font-size: 12px; padding: 5px 10px; border-radius: 999px; border: 1px solid #e5e7eb;
+    background: #fff; color: #374151; cursor: pointer;
+  }
+  .preset-btn:hover { background: #f3f4f6; }
+  .preset-btn.active { background: #1a1d23; color: #fff; border-color: #1a1d23; }
+  .custom-dates { display: flex; gap: 8px; align-items: center; margin-top: 6px; }
+  .custom-dates input[type=date] {
+    font-size: 12.5px; padding: 5px 8px; border: 1px solid #e5e7eb; border-radius: 6px; color: #1a1d23;
+  }
+  .type-row { margin-top: 16px; padding-top: 16px; border-top: 1px solid #f0f1f3; }
+
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-top: 16px; }
+  .kpi { background: #fafafa; border: 1px solid #eee; border-radius: 10px; padding: 14px 16px; }
+  .kpi .label { font-size: 11px; color: #6b7280; text-transform: uppercase; letter-spacing: .04em; }
+  .kpi .value { font-size: 22px; font-weight: 600; margin-top: 4px; }
+  .kpi .cmp { font-size: 12px; margin-top: 4px; }
+  .kpi .cmp .arrow { font-weight: 700; }
+
+  .topnav { position: sticky; top: 0; background: #f7f8fa; z-index: 10; display: flex; gap: 6px; flex-wrap: wrap; padding: 10px 0 14px; margin-bottom: 6px; border-bottom: 1px solid #e5e7eb; }
+  .topnav button { font: inherit; font-size: 12.5px; color: #374151; padding: 6px 12px; border-radius: 999px; border: 1px solid #e5e7eb; background: #fff; cursor: pointer; }
+  .topnav button:hover { background: #f3f4f6; }
+
+  .cal-header { display: flex; align-items: center; justify-content: center; gap: 16px; margin-bottom: 12px; }
+  .cal-header button { font-size: 13px; padding: 5px 12px; border-radius: 999px; border: 1px solid #e5e7eb; background: #fff; cursor: pointer; }
+  .cal-header button:hover { background: #f3f4f6; }
+  .cal-header .cal-month-label { font-size: 14px; font-weight: 600; text-transform: capitalize; min-width: 140px; text-align: center; }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+  .cal-dow { font-size: 11px; color: #6b7280; text-transform: uppercase; text-align: center; padding: 4px 0; }
+  .cal-day { background: #fafafa; border: 1px solid #eee; border-radius: 8px; min-height: 78px; padding: 6px; font-size: 10.5px; }
+  .cal-day.empty { background: transparent; border-color: transparent; }
+  .cal-day.today { border-color: #1a1d23; border-width: 2px; }
+  .cal-daynum { font-size: 11px; color: #9ca3af; margin-bottom: 4px; }
+  .cal-chip { border-radius: 6px; padding: 2px 5px; margin-bottom: 3px; line-height: 1.4; background: #dbeafe; color: #1e40af; }
+  .cal-chip.strength { background: #fef3c7; color: #92400e; }
+  .cal-chip.other { background: #ede9fe; color: #5b21b6; }
+  .cal-week-summary { grid-column: 1 / -1; background: #fafafa; border: 1px dashed #e5e7eb; border-radius: 8px; padding: 6px 10px; font-size: 11px; color: #374151; display: flex; flex-wrap: wrap; gap: 4px 16px; margin: -2px 0 4px; }
+  .cal-week-summary b { color: #1a1d23; }
+  .cal-week-summary .empty-week { color: #9ca3af; }
+
+  .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+  @media (max-width: 480px) {
+    body { padding: 12px; }
+    .card { padding: 12px; }
+    .chart-wrap { height: 220px; }
+    .cal-grid { gap: 3px; }
+    .cal-day { min-height: 58px; padding: 3px; font-size: 9.5px; }
+    .cal-daynum { font-size: 10px; }
+    .cal-week-summary { font-size: 10px; gap: 3px 10px; }
+    .topnav button { font-size: 11.5px; padding: 5px 9px; }
+    .kpi .value { font-size: 19px; }
+    table { font-size: 11px; }
+    th, td { padding: 5px 6px; }
+  }
+</style>
+</head>
+<body>
+  <h2 class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden;">Painel de sono e performance de treino, com seleção de período, comparação entre períodos, filtro por tipo de atividade, tendências, correlação entre sono e frequência cardíaca em treino e calendário mensal de treinos realizados. As métricas se adaptam ao tipo de atividade selecionado (distância e ritmo para corrida, tempo para força e afins).</h2>
+  <h1>Painel Garmin — Sono &times; Performance</h1>
+  <p class="subtitle" id="subtitleText">Carregando histórico completo...</p>
+
+  <nav class="topnav">
+    <button type="button" onclick="scrollToSection('periodo')">Resumo</button>
+    <button type="button" onclick="scrollToSection('calendario')">Calendário</button>
+    <button type="button" onclick="scrollToSection('diario')">Série diária</button>
+    <button type="button" onclick="scrollToSection('correlacoes')">Correlações</button>
+    <button type="button" onclick="scrollToSection('vo2max')">VO2max</button>
+    <button type="button" onclick="scrollToSection('previsao')">Previsão de prova</button>
+    <button type="button" onclick="scrollToSection('mensal')">Visão mensal</button>
+  </nav>
+
+  <div class="card" id="periodo">
+    <h2>Período</h2>
+    <div class="controls-row">
+      <div class="control-group">
+        <label>Período principal</label>
+        <div class="presets" id="primaryPresets"></div>
+        <div class="custom-dates">
+          <input type="date" id="primaryStart"> até <input type="date" id="primaryEnd">
+        </div>
+      </div>
+      <div class="control-group">
+        <label>Comparar com</label>
+        <div class="presets" id="cmpPresets"></div>
+        <div class="custom-dates" id="cmpCustomDates" style="display:none;">
+          <input type="date" id="cmpStart"> até <input type="date" id="cmpEnd">
+        </div>
+      </div>
+    </div>
+    <div class="control-group type-row">
+      <label>Tipo de atividade</label>
+      <div class="presets" id="typePresets"></div>
+    </div>
+    <div id="kpis" class="kpis"><div class="loading">Carregando...</div></div>
+  </div>
+
+  <div class="card" id="calendario">
+    <h2>Calendário de treinos</h2>
+    <div class="cal-header">
+      <button id="calPrev" aria-label="Mês anterior">&larr;</button>
+      <span class="cal-month-label" id="calMonthLabel"></span>
+      <button id="calNext" aria-label="Próximo mês">&rarr;</button>
+    </div>
+    <div class="cal-grid" id="calGrid"><div class="loading">Carregando...</div></div>
+    <div class="corr-note">Mostra as atividades realmente sincronizadas do Garmin (sem plano/meta) — corrida em azul, força em amarelo, outros tipos em roxo.</div>
+  </div>
+
+  <div class="card" id="diario">
+    <h2 id="dailyChartTitle">Série diária do período — sono (h) e distância (km)</h2>
+    <div class="chart-wrap"><canvas id="dailyChart"></canvas></div>
+  </div>
+
+  <div class="grid2" id="correlacoes">
+    <div class="card">
+      <h2>Correlação: sono &times; FC média no treino</h2>
+      <div class="chart-wrap"><canvas id="corrHrChart"></canvas></div>
+      <div id="corrHrNote" class="corr-note"></div>
+    </div>
+    <div class="card">
+      <h2 id="corrPaceChartTitle">Correlação: sono &times; ritmo (min/km)</h2>
+      <div class="chart-wrap"><canvas id="corrPaceChart"></canvas></div>
+      <div id="corrPaceNote" class="corr-note"></div>
+    </div>
+  </div>
+
+  <div class="card" id="vo2max">
+    <h2>Evolução do VO2max</h2>
+    <div class="chart-wrap"><canvas id="vo2Chart"></canvas></div>
+    <div class="corr-note">Estimativa do Garmin (algoritmo Firstbeat) — atualiza esporadicamente, não todo dia.</div>
+  </div>
+
+  <div class="card" id="previsao">
+    <h2>Previsão de prova (Garmin)</h2>
+    <div id="predKpis" class="kpis"><div class="loading">Carregando...</div></div>
+    <div id="predChartsWrap" class="grid2" style="margin-top:16px;">
+      <div>
+        <div style="font-size:12px;color:#6b7280;margin-bottom:6px;">5K / 10K</div>
+        <div class="chart-wrap"><canvas id="predChartShort"></canvas></div>
+      </div>
+      <div>
+        <div style="font-size:12px;color:#6b7280;margin-bottom:6px;">21K (meia) / 42K (maratona)</div>
+        <div class="chart-wrap"><canvas id="predChartLong"></canvas></div>
+      </div>
+    </div>
+    <div class="corr-note">Estimativa da Garmin com base em VO2max e treinos recentes — não é uma promessa de tempo de prova. Histórico completo a partir de 01/03/2026 (quando a Garmin passou a calcular a previsão para esta conta).</div>
+  </div>
+
+  <div class="card" id="mensal">
+    <h2>Visão geral — últimos 8 meses</h2>
+    <div class="chart-wrap"><canvas id="monthlyChart"></canvas></div>
+    <div id="monthlyTable" style="margin-top:16px;"><div class="loading">Carregando...</div></div>
+  </div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js" integrity="sha384-iU8HYtnGQ8Cy4zl7gbNMOhsDTTKX02BTXptVP/vqAWIaTfM7isw76iyZCsjL2eVi" crossorigin="anonymous"></script>
+<script>
+const API_BASE = "https://garmin-edmilson-report-em2411.up.railway.app";
+async function apiGet(path, params) {
+  const url = new URL(API_BASE + path);
+  Object.entries(params || {}).forEach(([k, v]) => url.searchParams.set(k, v));
+  const res = await fetch(url.toString());
+  if (!res.ok) throw new Error(`${path}: HTTP ${res.status}`);
+  return res.json();
+}
+function fmtDate(d) { return d.toISOString().slice(0,10); }
+function scrollToSection(id) {
+  const el = document.getElementById(id);
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+function parseDate(s) { const [y,m,dd] = s.split('-').map(Number); return new Date(y, m-1, dd); }
+function today0() { const t = new Date(); t.setHours(0,0,0,0); return t; }
+function startOfWeek(d) { const dd = new Date(d); const day = dd.getDay(); const diff = (day === 0 ? 6 : day - 1); dd.setDate(dd.getDate() - diff); return dd; }
+function inRange(dateStr, s, e) { const d = parseDate(dateStr); return d >= s && d <= e; }
+function monthKey(dateStr) { return dateStr.slice(0,7); }
+function fmtDuration(totalSeconds) {
+  if (totalSeconds == null || isNaN(totalSeconds)) return '—';
+  const h = Math.floor(totalSeconds/3600);
+  const m = Math.round((totalSeconds%3600)/60);
+  if (h > 0) return `${h}h${String(m).padStart(2,'0')}`;
+  return `${m}min`;
+}
+function fmtPace(v) {
+  if (v == null || isNaN(v)) return '—';
+  const totalSec = Math.round(v * 60);
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  return `${m}:${String(s).padStart(2,'0')}`;
+}
+function fmtHoursMin(h) {
+  if (h == null || isNaN(h)) return '—';
+  const totalMin = Math.round(h * 60);
+  const hh = Math.floor(totalMin / 60);
+  const mm = totalMin % 60;
+  return `${hh}h${String(mm).padStart(2,'0')}`;
+}
+function kpiCmpHours(curr, prevVal, lowerIsBetter) {
+  if (curr == null || prevVal == null || isNaN(curr) || isNaN(prevVal)) return '';
+  const dMin = Math.round((curr - prevVal) * 60);
+  if (Math.abs(dMin) < 1) return `<div class="cmp">= vs período comparado</div>`;
+  const better = lowerIsBetter ? dMin < 0 : dMin > 0;
+  const arrow = dMin > 0 ? '&uarr;' : '&darr;';
+  const cls = better ? 'pos' : 'neg';
+  const sign = dMin > 0 ? '+' : '';
+  return `<div class="cmp ${cls}"><span class="arrow">${arrow}</span> ${sign}${dMin}min vs comparado</div>`;
+}
+function fmtPaceDiff(d) {
+  const sign = d > 0 ? '+' : '-';
+  const totalSec = Math.round(Math.abs(d) * 60);
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  return `${sign}${m}:${String(s).padStart(2,'0')}`;
+}
+function kpiCmpPace(curr, prevVal, lowerIsBetter) {
+  if (curr == null || prevVal == null || isNaN(curr) || isNaN(prevVal)) return '';
+  const d = curr - prevVal;
+  if (Math.abs(d) < (1/60)) return `<div class="cmp">= vs período comparado</div>`;
+  const better = lowerIsBetter ? d < 0 : d > 0;
+  const arrow = d > 0 ? '&uarr;' : '&darr;';
+  const cls = better ? 'pos' : 'neg';
+  return `<div class="cmp ${cls}"><span class="arrow">${arrow}</span> ${fmtPaceDiff(d)}/km vs comparado</div>`;
+}
+
+const TYPE_LABELS = {
+  running: 'Corrida', treadmill_running: 'Corrida (esteira)', trail_running: 'Trail',
+  strength_training: 'Força', walking: 'Caminhada', hiking: 'Trilha',
+  cycling: 'Ciclismo', indoor_cycling: 'Ciclismo indoor', swimming: 'Natação',
+  yoga: 'Yoga', cardio: 'Cardio', elliptical: 'Elíptico', other: 'Outro',
+};
+function activityTypeLabel(t) { return TYPE_LABELS[t] || t; }
+
+// ---- full history, fetched once ----
+let ALL_DAILY = [];       // from get_daily_timeseries (sleep per day)
+let ALL_CORR = [];        // from get_sleep_performance_correlation (per-activity, has activity_type)
+let ALL_ACTIVITIES = [];  // from get_activities_raw (per-activity, has activity_type)
+let ACTIVITY_TYPES = [['all','Todas']];
+
+function primaryPresetRange(key) {
+  const t = today0();
+  switch(key) {
+    case 'today': return [t, t];
+    case 'yesterday': { const y = new Date(t); y.setDate(y.getDate()-1); return [y,y]; }
+    case 'this_week': return [startOfWeek(t), t];
+    case 'last_30': { const s = new Date(t); s.setDate(s.getDate()-29); return [s,t]; }
+    case 'this_month': return [new Date(t.getFullYear(), t.getMonth(), 1), t];
+    case 'last_month': return [new Date(t.getFullYear(), t.getMonth()-1, 1), new Date(t.getFullYear(), t.getMonth(), 0)];
+    case 'last_90': { const s = new Date(t); s.setDate(s.getDate()-89); return [s,t]; }
+    case 'this_year': return [new Date(t.getFullYear(),0,1), t];
+    case 'last_year': return [new Date(t.getFullYear()-1,0,1), new Date(t.getFullYear()-1,11,31)];
+  }
+}
+const PRIMARY_PRESETS = [
+  ['today','Hoje'], ['yesterday','Ontem'], ['this_week','Essa semana'],
+  ['this_month','Esse mês'], ['last_month','Mês passado'], ['last_30','Últimos 30d'],
+  ['last_90','Últimos 90d'], ['this_year','Esse ano'], ['last_year','Ano passado'],
+];
+const CMP_PRESETS = [
+  ['none','Nenhuma'], ['prev_period','Período anterior'], ['prev_year','Mesmo período ano passado'], ['custom','Personalizado'],
+];
+
+let state = { primaryKey: 'this_month', primaryRange: primaryPresetRange('this_month'), cmpKey: 'prev_period', cmpRange: null, activityType: 'all' };
+
+function equivalentPrevious([s,e]) {
+  const days = Math.round((e-s)/86400000)+1;
+  const prevEnd = new Date(s); prevEnd.setDate(prevEnd.getDate()-1);
+  const prevStart = new Date(prevEnd); prevStart.setDate(prevStart.getDate()-days+1);
+  return [prevStart, prevEnd];
+}
+function sameRangeLastYear([s,e]) {
+  const s2 = new Date(s); s2.setFullYear(s2.getFullYear()-1);
+  const e2 = new Date(e); e2.setFullYear(e2.getFullYear()-1);
+  return [s2,e2];
+}
+function renderPresetButtons(container, presets, activeKey, onClick) {
+  container.innerHTML = '';
+  presets.forEach(([key,label]) => {
+    const btn = document.createElement('button');
+    btn.className = 'preset-btn' + (key === activeKey ? ' active' : '');
+    btn.textContent = label;
+    btn.onclick = () => onClick(key);
+    container.appendChild(btn);
+  });
+}
+function setPrimary(key, customRange) {
+  state.primaryKey = key;
+  state.primaryRange = key === 'custom' ? customRange : primaryPresetRange(key);
+  document.getElementById('primaryStart').value = fmtDate(state.primaryRange[0]);
+  document.getElementById('primaryEnd').value = fmtDate(state.primaryRange[1]);
+  renderPresetButtons(document.getElementById('primaryPresets'), PRIMARY_PRESETS, key, k => setPrimary(k));
+  updateCmpRange();
+  renderAll();
+}
+function updateCmpRange() {
+  const cmpCustom = document.getElementById('cmpCustomDates');
+  if (state.cmpKey === 'none') { state.cmpRange = null; cmpCustom.style.display = 'none'; }
+  else if (state.cmpKey === 'prev_period') { state.cmpRange = equivalentPrevious(state.primaryRange); cmpCustom.style.display = 'none'; }
+  else if (state.cmpKey === 'prev_year') { state.cmpRange = sameRangeLastYear(state.primaryRange); cmpCustom.style.display = 'none'; }
+  else if (state.cmpKey === 'custom') {
+    cmpCustom.style.display = 'flex';
+    const s = document.getElementById('cmpStart').value, e = document.getElementById('cmpEnd').value;
+    state.cmpRange = (s && e) ? [parseDate(s), parseDate(e)] : null;
+  }
+}
+function setCmp(key) {
+  state.cmpKey = key;
+  renderPresetButtons(document.getElementById('cmpPresets'), CMP_PRESETS, key, k => setCmp(k));
+  updateCmpRange();
+  renderAll();
+}
+function setActivityType(key) {
+  state.activityType = key;
+  renderPresetButtons(document.getElementById('typePresets'), ACTIVITY_TYPES, key, k => setActivityType(k));
+  renderAll();
+}
+document.getElementById('primaryStart').addEventListener('change', () => {
+  setPrimary('custom', [parseDate(document.getElementById('primaryStart').value), parseDate(document.getElementById('primaryEnd').value)]);
+});
+document.getElementById('primaryEnd').addEventListener('change', () => {
+  setPrimary('custom', [parseDate(document.getElementById('primaryStart').value), parseDate(document.getElementById('primaryEnd').value)]);
+});
+document.getElementById('cmpStart').addEventListener('change', () => { updateCmpRange(); renderAll(); });
+document.getElementById('cmpEnd').addEventListener('change', () => { updateCmpRange(); renderAll(); });
+
+function pearson(xs, ys) {
+  const n = xs.length;
+  if (n < 3) return null;
+  const mx = xs.reduce((a,b)=>a+b,0)/n, my = ys.reduce((a,b)=>a+b,0)/n;
+  let num=0, dx2=0, dy2=0;
+  for (let i=0;i<n;i++){ const dx = xs[i]-mx, dy = ys[i]-my; num += dx*dy; dx2 += dx*dx; dy2 += dy*dy; }
+  const denom = Math.sqrt(dx2*dy2);
+  return denom === 0 ? null : num/denom;
+}
+function fmtR(r) {
+  if (r === null) return "dados insuficientes";
+  const cls = r < 0 ? "neg" : "pos";
+  return `<span class="corr-value ${cls}">r = ${r.toFixed(2)}</span>`;
+}
+function kpiCmp(curr, prevVal, unit, lowerIsBetter) {
+  if (curr == null || prevVal == null || isNaN(curr) || isNaN(prevVal)) return '';
+  const d = curr - prevVal;
+  if (Math.abs(d) < 0.01) return `<div class="cmp">= vs período comparado</div>`;
+  const better = lowerIsBetter ? d < 0 : d > 0;
+  const arrow = d > 0 ? '&uarr;' : '&darr;';
+  const cls = better ? 'pos' : 'neg';
+  const sign = d > 0 ? '+' : '';
+  return `<div class="cmp ${cls}"><span class="arrow">${arrow}</span> ${sign}${d.toFixed(1)}${unit} vs comparado</div>`;
+}
+
+function filterActs(actRows, s, e, typeFilter) {
+  return actRows.filter(r => inRange(r.date, s, e) && (typeFilter === 'all' || r.activity_type === typeFilter));
+}
+
+function latestVo2max(dailyRows, s, e) {
+  const rows = dailyRows.filter(r => inRange(r.date, s, e) && r.vo2max != null).sort((a,b) => a.date < b.date ? 1 : -1);
+  return rows.length ? { value: parseFloat(rows[0].vo2max), date: rows[0].date } : null;
+}
+
+const READINESS_LABELS = { LOW: 'Baixa', MODERATE: 'Moderada', HIGH: 'Alta', VERY_HIGH: 'Muito alta', PRIME: 'Prime', NONE: 'Calibrando' };
+function latestReadiness(dailyRows, s, e) {
+  const rows = dailyRows.filter(r => inRange(r.date, s, e) && r.readiness_level != null).sort((a,b) => a.date < b.date ? 1 : -1);
+  return rows.length ? rows[0] : null;
+}
+function fmtRaceTime(totalSeconds) {
+  if (totalSeconds == null || isNaN(totalSeconds)) return '—';
+  const s = Math.round(totalSeconds);
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+  if (h > 0) return `${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+  return `${m}:${String(sec).padStart(2,'0')}`;
+}
+function latestPredictions(dailyRows) {
+  const rows = dailyRows.filter(r => r.pred_marathon_seconds != null).sort((a,b) => a.date < b.date ? 1 : -1);
+  return rows.length ? rows[0] : null;
+}
+
+function summarize(dailyRows, corrRows, actRows, s, e, typeFilter) {
+  const dRows = dailyRows.filter(r => inRange(r.date, s, e) && r.sleep_hours != null);
+  const cRows = corrRows.filter(r => inRange(r.date, s, e) && (typeFilter === 'all' || r.activity_type === typeFilter));
+  const aRows = filterActs(actRows, s, e, typeFilter);
+  const avg = (arr, key) => { const vals = arr.map(x=>parseFloat(x[key])).filter(v=>!isNaN(v)); return vals.length ? vals.reduce((a,b)=>a+b,0)/vals.length : null; };
+  const totalKm = aRows.reduce((a,r)=>a + (parseFloat(r.distance_meters||0)/1000), 0);
+  let paceNum=0, paceDen=0;
+  aRows.forEach(r => {
+    const dist = parseFloat(r.distance_meters||0), dur = parseFloat(r.duration_seconds||0);
+    if (dist > 0 && dur > 0) { const pace = (dur/60)/(dist/1000); paceNum += pace*dist; paceDen += dist; }
+  });
+  const totalDurationSeconds = aRows.reduce((a,r)=>a+parseFloat(r.duration_seconds||0),0);
+  return {
+    avg_sleep_hours: avg(dRows,'sleep_hours'),
+    avg_resting_hr: avg(dRows,'resting_hr'),
+    avg_deep_pct: avg(dRows,'deep_sleep_pct'),
+    avg_rem_pct: avg(dRows,'rem_sleep_pct'),
+    days_with_data: dRows.length,
+    total_km: totalKm,
+    num_activities: aRows.length,
+    avg_hr: avg(aRows,'avg_hr_bpm'),
+    avg_pace_min_per_km: paceDen ? paceNum/paceDen : null,
+    total_duration_seconds: totalDurationSeconds,
+    avg_duration_seconds: aRows.length ? totalDurationSeconds/aRows.length : null,
+    avg_cadence: avg(aRows,'avg_cadence'),
+  };
+}
+
+function computeMonthly(dailyRows, actRows, typeFilter) {
+  const filteredActs = typeFilter === 'all' ? actRows : actRows.filter(a => a.activity_type === typeFilter);
+  const sleepByMonth = {};
+  dailyRows.forEach(r => {
+    if (r.sleep_hours == null) return;
+    const m = monthKey(r.date);
+    const o = sleepByMonth[m] || (sleepByMonth[m] = {sum:0,n:0,rhrSum:0,rhrN:0,deepSum:0,deepN:0,remSum:0,remN:0});
+    o.sum += parseFloat(r.sleep_hours); o.n++;
+    if (r.resting_hr != null) { o.rhrSum += parseFloat(r.resting_hr); o.rhrN++; }
+    if (r.deep_sleep_pct != null) { o.deepSum += parseFloat(r.deep_sleep_pct); o.deepN++; }
+    if (r.rem_sleep_pct != null) { o.remSum += parseFloat(r.rem_sleep_pct); o.remN++; }
+  });
+  const actByMonth = {};
+  filteredActs.forEach(a => {
+    const m = monthKey(a.date);
+    const o = actByMonth[m] || (actByMonth[m] = {km:0,durSec:0,n:0,hrSum:0,hrN:0});
+    o.km += parseFloat(a.distance_meters||0)/1000;
+    o.durSec += parseFloat(a.duration_seconds||0);
+    o.n++;
+    if (a.avg_hr_bpm != null) { o.hrSum += parseFloat(a.avg_hr_bpm); o.hrN++; }
+  });
+  const months = Array.from(new Set([...Object.keys(sleepByMonth), ...Object.keys(actByMonth)])).sort();
+  return months.map(m => {
+    const s = sleepByMonth[m], a = actByMonth[m];
+    return {
+      month: m,
+      avg_sleep_hours: s ? (s.sum/s.n).toFixed(2) : null,
+      avg_resting_hr: s && s.rhrN ? (s.rhrSum/s.rhrN).toFixed(1) : null,
+      avg_deep_pct: s && s.deepN ? (s.deepSum/s.deepN).toFixed(1) : null,
+      avg_rem_pct: s && s.remN ? (s.remSum/s.remN).toFixed(1) : null,
+      total_km: a ? a.km.toFixed(1) : null,
+      total_duration_seconds: a ? a.durSec : null,
+      num_activities: a ? a.n : 0,
+      avg_hr: a && a.hrN ? (a.hrSum/a.hrN).toFixed(1) : null,
+    };
+  });
+}
+
+// ---- calendar ----
+let calMonth = new Date(today0().getFullYear(), today0().getMonth(), 1);
+function activityChipClass(type) {
+  if (type === 'strength_training') return 'strength';
+  const distanceTypes = ['running','trail_running','treadmill_running','walking','hiking','cycling','indoor_cycling','swimming'];
+  return distanceTypes.includes(type) ? '' : 'other';
+}
+function actsByDate(rows) {
+  const map = {};
+  rows.forEach(a => { (map[a.date] = map[a.date] || []).push(a); });
+  return map;
+}
+function renderCalendar() {
+  const y = calMonth.getFullYear(), m = calMonth.getMonth();
+  document.getElementById('calMonthLabel').textContent = calMonth.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+  const first = new Date(y, m, 1);
+  const startOffset = (first.getDay() === 0 ? 6 : first.getDay() - 1);
+  const gridStart = new Date(first); gridStart.setDate(gridStart.getDate() - startOffset);
+  const daysInMonth = new Date(y, m + 1, 0).getDate();
+  const totalCells = Math.ceil((startOffset + daysInMonth) / 7) * 7;
+  const byDate = actsByDate(ALL_ACTIVITIES);
+  const todayStr = fmtDate(today0());
+
+  let html = '';
+  ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'].forEach(d => html += `<div class="cal-dow">${d}</div>`);
+
+  let cursor = new Date(gridStart);
+  for (let week = 0; week < totalCells / 7; week++) {
+    let weekKm = 0, weekStrengthSec = 0, weekOtherSec = 0, weekHasData = false;
+    let weekCellsHtml = '';
+    for (let d = 0; d < 7; d++) {
+      const dStr = fmtDate(cursor);
+      const inMonth = cursor.getMonth() === m;
+      const dayActs = inMonth ? (byDate[dStr] || []) : [];
+      dayActs.forEach(a => {
+        const km = parseFloat(a.distance_meters || 0) / 1000;
+        const durSec = parseFloat(a.duration_seconds || 0);
+        weekHasData = true;
+        if (a.activity_type === 'strength_training') weekStrengthSec += durSec;
+        else if (km > 0.05) weekKm += km;
+        else weekOtherSec += durSec;
+      });
+      if (!inMonth) {
+        weekCellsHtml += `<div class="cal-day empty"></div>`;
+      } else {
+        const chips = dayActs.map(a => {
+          const cls = activityChipClass(a.activity_type);
+          const label = (a.activity_type === 'strength_training' && a.name) ? a.name : activityTypeLabel(a.activity_type);
+          const km = parseFloat(a.distance_meters || 0) / 1000;
+          const dur = parseFloat(a.duration_seconds || 0);
+          const metric = km > 0.05 ? `${km.toFixed(1)}km` : fmtDuration(dur);
+          const pace = (km > 0.05 && dur) ? ` · ${fmtPace((dur / 60) / km)}` : '';
+          return `<div class="cal-chip ${cls}">&check; ${label} · ${metric}${pace}</div>`;
+        }).join('');
+        const isToday = dStr === todayStr;
+        weekCellsHtml += `<div class="cal-day${isToday ? ' today' : ''}"><div class="cal-daynum">${cursor.getDate()}</div>${chips}</div>`;
+      }
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    const summaryParts = [];
+    if (weekKm > 0.05) summaryParts.push(`Corrida: <b>${weekKm.toFixed(1)} km</b>`);
+    if (weekStrengthSec > 0) summaryParts.push(`Força: <b>${fmtDuration(weekStrengthSec)}</b>`);
+    if (weekOtherSec > 0) summaryParts.push(`Outros: <b>${fmtDuration(weekOtherSec)}</b>`);
+    html += weekCellsHtml;
+    html += `<div class="cal-week-summary">${weekHasData ? summaryParts.join('<span style="color:#d1d5db;">|</span>') : '<span class="empty-week">Semana sem atividades registradas</span>'}</div>`;
+  }
+  document.getElementById('calGrid').innerHTML = html;
+}
+document.getElementById('calPrev').addEventListener('click', () => { calMonth.setMonth(calMonth.getMonth() - 1); renderCalendar(); });
+document.getElementById('calNext').addEventListener('click', () => { calMonth.setMonth(calMonth.getMonth() + 1); renderCalendar(); });
+
+let charts = {};
+function destroyChart(key) { if (charts[key]) { charts[key].destroy(); delete charts[key]; } }
+
+function monthlyIsDistanceBased(months) {
+  return months.some(m => parseFloat(m.total_km || 0) > 0.01);
+}
+
+function renderMonthly() {
+  const months = computeMonthly(ALL_DAILY, ALL_ACTIVITIES, state.activityType).slice(-8);
+  const distBased = monthlyIsDistanceBased(months);
+  destroyChart('monthly');
+  charts.monthly = new Chart(document.getElementById('monthlyChart'), {
+    data: { labels: months.map(m => m.month), datasets: [
+      { type: 'bar', label: distBased ? 'Km' : 'Horas de treino',
+        data: months.map(m => distBased ? parseFloat(m.total_km || 0) : (parseFloat(m.total_duration_seconds || 0)/3600)),
+        backgroundColor: '#93c5fd', yAxisID: 'y' },
+      { type: 'line', label: 'Sono (h)', data: months.map(m => parseFloat(m.avg_sleep_hours || 0)), borderColor: '#f97316', backgroundColor: '#f97316', yAxisID: 'y1', tension: .3 },
+    ]},
+    options: { responsive: true, maintainAspectRatio: false,
+      scales: { y: { position: 'left', title: { display: true, text: distBased ? 'km' : 'horas de treino' } },
+        y1: { position: 'right', title: { display: true, text: 'horas de sono' }, grid: { drawOnChartArea: false }, suggestedMin: 4, suggestedMax: 9 } } }
+  });
+  document.getElementById('monthlyTable').innerHTML = `<div class="table-scroll"><table><thead><tr>
+      <th>Mês</th><th>${distBased ? 'Km' : 'Tempo'}</th><th>Ativ.</th><th>Sono (h)</th><th>RHR</th><th>Profundo %</th><th>REM %</th>
+    </tr></thead><tbody>
+      ${months.map(m => `<tr><td>${m.month}</td><td>${distBased ? (m.total_km ?? '—') : fmtDuration(m.total_duration_seconds)}</td><td>${m.num_activities ?? '—'}</td>
+        <td>${fmtHoursMin(m.avg_sleep_hours != null ? parseFloat(m.avg_sleep_hours) : null)}</td><td>${m.avg_resting_hr ?? '—'}</td><td>${m.avg_deep_pct ?? '—'}</td><td>${m.avg_rem_pct ?? '—'}</td></tr>`).reverse().join('')}
+    </tbody></table></div>`;
+}
+
+function renderAll() {
+  const [ps, pe] = state.primaryRange;
+  const summary = summarize(ALL_DAILY, ALL_CORR, ALL_ACTIVITIES, ps, pe, state.activityType);
+  const cmpSummary = state.cmpRange ? summarize(ALL_DAILY, ALL_CORR, ALL_ACTIVITIES, state.cmpRange[0], state.cmpRange[1], state.activityType) : null;
+  const isDistanceBased = summary.total_km > 0.01;
+
+  const kpisEl = document.getElementById('kpis');
+  const cmpLabel = state.cmpRange ? ` <span style="font-weight:400;color:#9ca3af;">(vs ${fmtDate(state.cmpRange[0])} a ${fmtDate(state.cmpRange[1])})</span>` : '';
+  const r1 = v => v == null ? '—' : v.toFixed(1);
+  const r2 = v => v == null ? '—' : v.toFixed(2);
+
+  let metricKpisHtml;
+  if (isDistanceBased) {
+    metricKpisHtml = `
+      <div class="kpi"><div class="label">Km no período</div><div class="value">${r1(summary.total_km)}</div>${cmpSummary ? kpiCmp(summary.total_km, cmpSummary.total_km, 'km', false) : ''}</div>
+      <div class="kpi"><div class="label">Ritmo médio</div><div class="value">${fmtPace(summary.avg_pace_min_per_km)} /km</div>${cmpSummary ? kpiCmpPace(summary.avg_pace_min_per_km, cmpSummary.avg_pace_min_per_km, true) : ''}</div>
+    `;
+  } else {
+    const currH = summary.total_duration_seconds != null ? summary.total_duration_seconds/3600 : null;
+    const cmpH = cmpSummary && cmpSummary.total_duration_seconds != null ? cmpSummary.total_duration_seconds/3600 : null;
+    const currAvgMin = summary.avg_duration_seconds != null ? summary.avg_duration_seconds/60 : null;
+    const cmpAvgMin = cmpSummary && cmpSummary.avg_duration_seconds != null ? cmpSummary.avg_duration_seconds/60 : null;
+    metricKpisHtml = `
+      <div class="kpi"><div class="label">Tempo total</div><div class="value">${fmtDuration(summary.total_duration_seconds)}</div>${cmpSummary ? kpiCmp(currH, cmpH, 'h', false) : ''}</div>
+      <div class="kpi"><div class="label">Duração média</div><div class="value">${fmtDuration(summary.avg_duration_seconds)}</div>${cmpSummary ? kpiCmp(currAvgMin, cmpAvgMin, 'min', false) : ''}</div>
+    `;
+  }
+
+  const cadenceKpiHtml = summary.avg_cadence != null
+    ? `<div class="kpi"><div class="label">Cadência média</div><div class="value">${r1(summary.avg_cadence)} spm</div>${cmpSummary ? kpiCmp(summary.avg_cadence, cmpSummary.avg_cadence, ' spm', false) : ''}</div>`
+    : '';
+
+  const vo2 = latestVo2max(ALL_DAILY, ps, pe);
+  const vo2Cmp = cmpSummary && state.cmpRange ? latestVo2max(ALL_DAILY, state.cmpRange[0], state.cmpRange[1]) : null;
+  const vo2KpiHtml = vo2
+    ? `<div class="kpi"><div class="label">VO2max</div><div class="value">${r1(vo2.value)}</div>${vo2Cmp ? kpiCmp(vo2.value, vo2Cmp.value, '', false) : ''}<div style="font-size:11px;color:#9ca3af;margin-top:2px;">em ${vo2.date}</div></div>`
+    : '';
+
+  const readiness = latestReadiness(ALL_DAILY, ps, pe);
+  const readinessKpiHtml = readiness
+    ? `<div class="kpi"><div class="label">Training Readiness</div><div class="value">${readiness.readiness_score ?? '—'}</div><div style="font-size:12px;color:#6b7280;margin-top:2px;">${READINESS_LABELS[readiness.readiness_level] || readiness.readiness_level}</div><div style="font-size:11px;color:#9ca3af;margin-top:2px;">em ${readiness.date}</div></div>`
+    : '';
+
+  kpisEl.innerHTML = `
+    ${metricKpisHtml}
+    <div class="kpi"><div class="label">Sono médio</div><div class="value">${fmtHoursMin(summary.avg_sleep_hours)}</div>${cmpSummary ? kpiCmpHours(summary.avg_sleep_hours, cmpSummary.avg_sleep_hours, false) : ''}</div>
+    <div class="kpi"><div class="label">RHR médio</div><div class="value">${r1(summary.avg_resting_hr)}</div>${cmpSummary ? kpiCmp(summary.avg_resting_hr, cmpSummary.avg_resting_hr, ' bpm', true) : ''}</div>
+    <div class="kpi"><div class="label">Sono profundo</div><div class="value">${r1(summary.avg_deep_pct)}%</div>${cmpSummary ? kpiCmp(summary.avg_deep_pct, cmpSummary.avg_deep_pct, '%', false) : ''}</div>
+    <div class="kpi"><div class="label">Sono REM</div><div class="value">${r1(summary.avg_rem_pct)}%</div>${cmpSummary ? kpiCmp(summary.avg_rem_pct, cmpSummary.avg_rem_pct, '%', false) : ''}</div>
+    <div class="kpi"><div class="label">Atividades</div><div class="value">${summary.num_activities}</div>${cmpSummary ? kpiCmp(summary.num_activities, cmpSummary.num_activities, '', false) : ''}</div>
+    ${cadenceKpiHtml}
+    ${vo2KpiHtml}
+    ${readinessKpiHtml}
+    <div style="grid-column:1/-1;font-size:11px;color:#9ca3af;">${fmtDate(ps)} a ${fmtDate(pe)}${cmpLabel}</div>
+  `;
+
+  // ---- daily chart: km or hours of training, depending on mode ----
+  document.getElementById('dailyChartTitle').textContent = isDistanceBased
+    ? 'Série diária do período — sono (h) e distância (km)'
+    : 'Série diária do período — sono (h) e duração de treino (h)';
+
+  const daily = ALL_DAILY.filter(r => inRange(r.date, ps, pe));
+  const actInRange = filterActs(ALL_ACTIVITIES, ps, pe, state.activityType);
+  const kmByDate = {}, durHByDate = {};
+  actInRange.forEach(r => {
+    kmByDate[r.date] = (kmByDate[r.date] || 0) + parseFloat(r.distance_meters||0)/1000;
+    durHByDate[r.date] = (durHByDate[r.date] || 0) + parseFloat(r.duration_seconds||0)/3600;
+  });
+  destroyChart('daily');
+  charts.daily = new Chart(document.getElementById('dailyChart'), {
+    data: { labels: daily.map(d => d.date), datasets: [
+      { type: 'bar', label: isDistanceBased ? 'Km' : 'Duração (h)',
+        data: daily.map(d => isDistanceBased ? (kmByDate[d.date] || 0) : (durHByDate[d.date] || 0)),
+        backgroundColor: '#bfdbfe', yAxisID: 'y' },
+      { type: 'line', label: 'Sono (h)', data: daily.map(d => d.sleep_hours != null ? parseFloat(d.sleep_hours) : null), borderColor: '#f97316', borderWidth: 1.5, pointRadius: 2, yAxisID: 'y1', tension: .3, spanGaps: true },
+    ]},
+    options: { responsive: true, maintainAspectRatio: false,
+      scales: { x: { ticks: { maxTicksLimit: 10 } }, y: { position: 'left', title: { display: true, text: isDistanceBased ? 'km' : 'horas de treino' } },
+        y1: { position: 'right', title: { display: true, text: 'horas de sono' }, grid: { drawOnChartArea: false } } } }
+  });
+
+  // ---- correlation: sleep x HR (always relevant) ----
+  const corr = ALL_CORR.filter(r => inRange(r.date, ps, pe) && (state.activityType === 'all' || r.activity_type === state.activityType));
+  const hrPairs = corr.filter(p => p.sleep_hours != null && p.avg_hr_bpm != null);
+  destroyChart('corrHr');
+  charts.corrHr = new Chart(document.getElementById('corrHrChart'), {
+    type: 'scatter',
+    data: { datasets: [{ label: 'Dia de treino', data: hrPairs.map(p => ({x: parseFloat(p.sleep_hours), y: parseFloat(p.avg_hr_bpm)})), backgroundColor: '#60a5fa' }] },
+    options: { responsive: true, maintainAspectRatio: false,
+      scales: { x: { title: { display: true, text: 'Horas de sono' } }, y: { title: { display: true, text: 'FC média (bpm)' } } } }
+  });
+  const rHr = pearson(hrPairs.map(p=>parseFloat(p.sleep_hours)), hrPairs.map(p=>parseFloat(p.avg_hr_bpm)));
+  document.getElementById('corrHrNote').innerHTML = `${fmtR(rHr)} (n=${hrPairs.length})`;
+
+  // ---- correlation: sleep x pace (distance activities) or sleep x duration (others) ----
+  document.getElementById('corrPaceChartTitle').textContent = isDistanceBased
+    ? 'Correlação: sono × ritmo (min/km)'
+    : 'Correlação: sono × duração do treino (min)';
+
+  let pacePairs, pY;
+  if (isDistanceBased) {
+    pacePairs = corr.filter(p => p.sleep_hours != null && p.pace_min_per_km != null);
+    pY = p => parseFloat(p.pace_min_per_km);
+  } else {
+    pacePairs = corr.filter(p => p.sleep_hours != null && p.duration_seconds != null);
+    pY = p => parseFloat(p.duration_seconds)/60;
+  }
+  destroyChart('corrPace');
+  charts.corrPace = new Chart(document.getElementById('corrPaceChart'), {
+    type: 'scatter',
+    data: { datasets: [{ label: 'Dia de treino', data: pacePairs.map(p => ({x: parseFloat(p.sleep_hours), y: pY(p)})), backgroundColor: '#fb923c' }] },
+    options: { responsive: true, maintainAspectRatio: false,
+      scales: { x: { title: { display: true, text: 'Horas de sono' } }, y: { title: { display: true, text: isDistanceBased ? 'Ritmo (min/km)' : 'Duração (min)' } } } }
+  });
+  const rPace = pearson(pacePairs.map(p=>parseFloat(p.sleep_hours)), pacePairs.map(pY));
+  document.getElementById('corrPaceNote').innerHTML = `${fmtR(rPace)} (n=${pacePairs.length})`;
+
+  renderMonthly();
+}
+
+function renderPredictions() {
+  const latest = latestPredictions(ALL_DAILY);
+  const el = document.getElementById('predKpis');
+  const chartsWrap = document.getElementById('predChartsWrap');
+  if (!latest) {
+    el.innerHTML = `<div class="loading">Ainda sem previsões sincronizadas — deve aparecer no próximo sync diário.</div>`;
+    chartsWrap.style.display = 'none';
+    return;
+  }
+  const paceFor = (seconds, km) => (seconds != null) ? `${fmtPace((seconds/60)/km)} /km` : '';
+  el.innerHTML = `
+    <div class="kpi"><div class="label">5K</div><div class="value">${fmtRaceTime(latest.pred_5k_seconds)}</div><div style="font-size:11px;color:#9ca3af;">${paceFor(latest.pred_5k_seconds, 5)}</div></div>
+    <div class="kpi"><div class="label">10K</div><div class="value">${fmtRaceTime(latest.pred_10k_seconds)}</div><div style="font-size:11px;color:#9ca3af;">${paceFor(latest.pred_10k_seconds, 10)}</div></div>
+    <div class="kpi"><div class="label">21K (meia)</div><div class="value">${fmtRaceTime(latest.pred_half_seconds)}</div><div style="font-size:11px;color:#9ca3af;">${paceFor(latest.pred_half_seconds, 21.0975)}</div></div>
+    <div class="kpi"><div class="label">42K (maratona)</div><div class="value">${fmtRaceTime(latest.pred_marathon_seconds)}</div><div style="font-size:11px;color:#9ca3af;">${paceFor(latest.pred_marathon_seconds, 42.195)}</div></div>
+    <div style="grid-column:1/-1;font-size:11px;color:#9ca3af;">Estimativa mais recente: ${latest.date}</div>
+  `;
+  const points = ALL_DAILY
+    .filter(d => d.pred_5k_seconds != null || d.pred_10k_seconds != null || d.pred_half_seconds != null || d.pred_marathon_seconds != null)
+    .map(d => ({
+      date: d.date,
+      p5k: d.pred_5k_seconds != null ? parseFloat(d.pred_5k_seconds) : null,
+      p10k: d.pred_10k_seconds != null ? parseFloat(d.pred_10k_seconds) : null,
+      phalf: d.pred_half_seconds != null ? parseFloat(d.pred_half_seconds) : null,
+      pmarathon: d.pred_marathon_seconds != null ? parseFloat(d.pred_marathon_seconds) : null,
+    }));
+  chartsWrap.style.display = '';
+  destroyChart('predShort');
+  destroyChart('predLong');
+  if (points.length < 2) {
+    chartsWrap.innerHTML = '<div class="loading">O gráfico de evolução aparece a partir do 2º dia com previsão sincronizada.</div>';
+    return;
+  }
+  chartsWrap.innerHTML = `
+    <div>
+      <div style="font-size:12px;color:#6b7280;margin-bottom:6px;">5K / 10K</div>
+      <div class="chart-wrap"><canvas id="predChartShort"></canvas></div>
+    </div>
+    <div>
+      <div style="font-size:12px;color:#6b7280;margin-bottom:6px;">21K (meia) / 42K (maratona)</div>
+      <div class="chart-wrap"><canvas id="predChartLong"></canvas></div>
+    </div>
+  `;
+  const axisTicks = { callback: v => fmtRaceTime(v) };
+  const tooltipFmt = { callbacks: { label: ctx => `${ctx.dataset.label}: ${fmtRaceTime(ctx.raw)}` } };
+  charts.predShort = new Chart(document.getElementById('predChartShort'), {
+    type: 'line',
+    data: { labels: points.map(p => p.date), datasets: [
+      { label: '5K', data: points.map(p => p.p5k), borderColor: '#3b82f6', backgroundColor: '#3b82f6', tension: .3, pointRadius: 3, spanGaps: true },
+      { label: '10K', data: points.map(p => p.p10k), borderColor: '#22c55e', backgroundColor: '#22c55e', tension: .3, pointRadius: 3, spanGaps: true },
+    ]},
+    options: { responsive: true, maintainAspectRatio: false,
+      plugins: { tooltip: tooltipFmt },
+      scales: { y: { ticks: axisTicks } } }
+  });
+  charts.predLong = new Chart(document.getElementById('predChartLong'), {
+    type: 'line',
+    data: { labels: points.map(p => p.date), datasets: [
+      { label: '21K (meia)', data: points.map(p => p.phalf), borderColor: '#f59e0b', backgroundColor: '#f59e0b', tension: .3, pointRadius: 3, spanGaps: true },
+      { label: '42K (maratona)', data: points.map(p => p.pmarathon), borderColor: '#dc2626', backgroundColor: '#dc2626', tension: .3, pointRadius: 3, spanGaps: true },
+    ]},
+    options: { responsive: true, maintainAspectRatio: false,
+      plugins: { tooltip: tooltipFmt },
+      scales: { y: { ticks: axisTicks } } }
+  });
+}
+
+async function init() {
+  renderPresetButtons(document.getElementById('cmpPresets'), CMP_PRESETS, state.cmpKey, k => setCmp(k));
+  renderPresetButtons(document.getElementById('primaryPresets'), PRIMARY_PRESETS, state.primaryKey, k => setPrimary(k));
+  updateCmpRange();
+  document.getElementById('primaryStart').value = fmtDate(state.primaryRange[0]);
+  document.getElementById('primaryEnd').value = fmtDate(state.primaryRange[1]);
+
+  const todayStr = fmtDate(today0());
+  try {
+    const [dailyRes, corrRes, actRes] = await Promise.all([
+      apiGet("/api/daily-timeseries", { start_date: "2025-03-01", end_date: todayStr }),
+      apiGet("/api/sleep-performance-correlation", { start_date: "2025-03-01", end_date: todayStr }),
+      apiGet("/api/activities-raw", { start_date: "2025-03-01", end_date: todayStr }),
+    ]);
+    ALL_DAILY = dailyRes?.days || [];
+    ALL_CORR = corrRes?.pairs || [];
+    ALL_ACTIVITIES = actRes?.activities || [];
+
+    const types = Array.from(new Set(ALL_ACTIVITIES.map(a => a.activity_type).filter(Boolean))).sort();
+    ACTIVITY_TYPES = [['all','Todas'], ...types.map(t => [t, activityTypeLabel(t)])];
+    renderPresetButtons(document.getElementById('typePresets'), ACTIVITY_TYPES, state.activityType, k => setActivityType(k));
+
+    document.getElementById('subtitleText').textContent = `${ALL_DAILY.length} dias de histórico carregados (desde março/2025). Sincronizado diariamente do Garmin Connect.`;
+
+    const vo2Points = ALL_DAILY.filter(d => d.vo2max != null).map(d => ({ date: d.date, value: parseFloat(d.vo2max) }));
+    if (vo2Points.length) {
+      charts.vo2 = new Chart(document.getElementById('vo2Chart'), {
+        type: 'line',
+        data: { labels: vo2Points.map(p => p.date), datasets: [
+          { label: 'VO2max', data: vo2Points.map(p => p.value), borderColor: '#059669', backgroundColor: '#059669', tension: .3, pointRadius: 3 },
+        ]},
+        options: { responsive: true, maintainAspectRatio: false,
+          scales: { y: { title: { display: true, text: 'ml/kg/min' } } } }
+      });
+    } else {
+      document.getElementById('vo2Chart').parentElement.parentElement.style.display = 'none';
+    }
+
+    renderCalendar();
+    renderPredictions();
+    renderAll();
+  } catch (e) {
+    document.getElementById('kpis').innerHTML = `<div class="err">Erro ao carregar dados: ${e.message || e}</div>`;
+  }
+}
+init();
+</script>
+</body>
+</html>
