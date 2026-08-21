@@ -26,42 +26,105 @@ cur = conn.cursor()
 
 def sync_day(d):
     ds = d.isoformat()
+    is_today = (d == date.today())
 
     sleep = garmin.get_sleep_data(ds)
     dto = (sleep or {}).get('dailySleepDTO', {}) or {}
     sleep_seconds = dto.get('sleepTimeSeconds')
+
+    rhr = None
+    try:
+        stats = garmin.get_stats(ds)
+        rhr = stats.get('restingHeartRate')
+    except Exception:
+        pass
+
+    vo2max = None
+    try:
+        mm = garmin.get_max_metrics(ds)
+        if mm:
+            generic = (mm[0] or {}).get('generic') or {}
+            vo2max = generic.get('vo2MaxValue')
+    except Exception:
+        pass
+
+    # Training Readiness (usa a leitura da manha, logo apos acordar)
+    readiness_level = readiness_score = readiness_sleep_score = None
+    readiness_recovery_hours = readiness_acute_load = readiness_hrv_weekly_avg = None
+    try:
+        tr_list = garmin.get_training_readiness(ds)
+        tr = None
+        if tr_list:
+            tr = next((t for t in tr_list if t.get('inputContext') == 'AFTER_WAKEUP_RESET'), tr_list[0])
+        if tr:
+            readiness_level = tr.get('level')
+            readiness_score = tr.get('score')
+            readiness_sleep_score = tr.get('sleepScore')
+            recovery_min = tr.get('recoveryTime')
+            readiness_recovery_hours = round(recovery_min / 60, 1) if recovery_min else None
+            readiness_acute_load = tr.get('acuteLoad')
+            readiness_hrv_weekly_avg = tr.get('hrvWeeklyAverage')
+    except Exception as e:
+        print(f"{ds}: sem training readiness ({e})", flush=True)
+
+    # Previsao de provas (nao e por data, so faz sentido gravar no snapshot de hoje)
+    pred_5k = pred_10k = pred_half = pred_marathon = None
+    if is_today:
+        try:
+            rp = garmin.get_race_predictions()
+            if rp:
+                pred_5k = rp.get('time5K')
+                pred_10k = rp.get('time10K')
+                pred_half = rp.get('timeHalfMarathon')
+                pred_marathon = rp.get('timeMarathon')
+        except Exception as e:
+            print(f"{ds}: sem previsao de prova ({e})", flush=True)
+
     if sleep_seconds:
         deep = dto.get('deepSleepSeconds') or 0
         light = dto.get('lightSleepSeconds') or 0
         rem = dto.get('remSleepSeconds') or 0
         awake = dto.get('awakeSleepSeconds') or 0
         total = sleep_seconds or 1
-        rhr = None
-        try:
-            stats = garmin.get_stats(ds)
-            rhr = stats.get('restingHeartRate')
-        except Exception:
-            pass
-        vo2max = None
-        try:
-            mm = garmin.get_max_metrics(ds)
-            if mm:
-                generic = (mm[0] or {}).get('generic') or {}
-                vo2max = generic.get('vo2MaxValue')
-        except Exception:
-            pass
         cur.execute("""
-            INSERT INTO daily_sleep (date, sleep_hours, sleep_seconds, deep_sleep_pct, light_sleep_pct, rem_sleep_pct, awake_seconds, resting_hr, vo2max)
-            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+            INSERT INTO daily_sleep (date, sleep_hours, sleep_seconds, deep_sleep_pct, light_sleep_pct, rem_sleep_pct, awake_seconds, resting_hr, vo2max,
+                readiness_level, readiness_score, readiness_sleep_score, readiness_recovery_hours, readiness_acute_load, readiness_hrv_weekly_avg,
+                pred_5k_seconds, pred_10k_seconds, pred_half_seconds, pred_marathon_seconds)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
             ON CONFLICT (date) DO UPDATE SET
                 sleep_hours=EXCLUDED.sleep_hours, sleep_seconds=EXCLUDED.sleep_seconds,
                 deep_sleep_pct=EXCLUDED.deep_sleep_pct, light_sleep_pct=EXCLUDED.light_sleep_pct,
                 rem_sleep_pct=EXCLUDED.rem_sleep_pct, awake_seconds=EXCLUDED.awake_seconds,
-                resting_hr=EXCLUDED.resting_hr, vo2max=EXCLUDED.vo2max
-        """, (ds, round(sleep_seconds/3600,2), sleep_seconds, round(deep/total*100,2), round(light/total*100,2), round(rem/total*100,2), awake, rhr, vo2max))
+                resting_hr=EXCLUDED.resting_hr, vo2max=EXCLUDED.vo2max,
+                readiness_level=EXCLUDED.readiness_level, readiness_score=EXCLUDED.readiness_score,
+                readiness_sleep_score=EXCLUDED.readiness_sleep_score, readiness_recovery_hours=EXCLUDED.readiness_recovery_hours,
+                readiness_acute_load=EXCLUDED.readiness_acute_load, readiness_hrv_weekly_avg=EXCLUDED.readiness_hrv_weekly_avg,
+                pred_5k_seconds=COALESCE(EXCLUDED.pred_5k_seconds, daily_sleep.pred_5k_seconds),
+                pred_10k_seconds=COALESCE(EXCLUDED.pred_10k_seconds, daily_sleep.pred_10k_seconds),
+                pred_half_seconds=COALESCE(EXCLUDED.pred_half_seconds, daily_sleep.pred_half_seconds),
+                pred_marathon_seconds=COALESCE(EXCLUDED.pred_marathon_seconds, daily_sleep.pred_marathon_seconds)
+        """, (ds, round(sleep_seconds/3600,2), sleep_seconds, round(deep/total*100,2), round(light/total*100,2), round(rem/total*100,2), awake, rhr, vo2max,
+              readiness_level, readiness_score, readiness_sleep_score, readiness_recovery_hours, readiness_acute_load, readiness_hrv_weekly_avg,
+              pred_5k, pred_10k, pred_half, pred_marathon))
         conn.commit()
-        print(f"{ds}: sono OK ({sleep_seconds/3600:.1f}h, rhr={rhr})", flush=True)
+        print(f"{ds}: sono OK ({sleep_seconds/3600:.1f}h, rhr={rhr}, readiness={readiness_level})", flush=True)
     else:
+        if readiness_level or pred_marathon:
+            cur.execute("""
+                INSERT INTO daily_sleep (date, readiness_level, readiness_score, readiness_sleep_score, readiness_recovery_hours,
+                    readiness_acute_load, readiness_hrv_weekly_avg, pred_5k_seconds, pred_10k_seconds, pred_half_seconds, pred_marathon_seconds)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                ON CONFLICT (date) DO UPDATE SET
+                    readiness_level=EXCLUDED.readiness_level, readiness_score=EXCLUDED.readiness_score,
+                    readiness_sleep_score=EXCLUDED.readiness_sleep_score, readiness_recovery_hours=EXCLUDED.readiness_recovery_hours,
+                    readiness_acute_load=EXCLUDED.readiness_acute_load, readiness_hrv_weekly_avg=EXCLUDED.readiness_hrv_weekly_avg,
+                    pred_5k_seconds=COALESCE(EXCLUDED.pred_5k_seconds, daily_sleep.pred_5k_seconds),
+                    pred_10k_seconds=COALESCE(EXCLUDED.pred_10k_seconds, daily_sleep.pred_10k_seconds),
+                    pred_half_seconds=COALESCE(EXCLUDED.pred_half_seconds, daily_sleep.pred_half_seconds),
+                    pred_marathon_seconds=COALESCE(EXCLUDED.pred_marathon_seconds, daily_sleep.pred_marathon_seconds)
+            """, (ds, readiness_level, readiness_score, readiness_sleep_score, readiness_recovery_hours,
+                  readiness_acute_load, readiness_hrv_weekly_avg, pred_5k, pred_10k, pred_half, pred_marathon))
+            conn.commit()
         print(f"{ds}: sem dado de sono", flush=True)
 
     try:
