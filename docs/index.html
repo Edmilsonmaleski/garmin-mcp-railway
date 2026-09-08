@@ -6,86 +6,121 @@
 <title>Painel Garmin — Sono &times; Performance</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2NCA2NCI+CiAgPGNpcmNsZSBjeD0iMzIiIGN5PSIzMiIgcj0iMzAiIGZpbGw9IiMwZjE3MmEiLz4KICA8Y2lyY2xlIGN4PSIzMiIgY3k9IjMyIiByPSIyNSIgZmlsbD0iIzFhMWQyMyIgc3Ryb2tlPSIjM2I4MmY2IiBzdHJva2Utd2lkdGg9IjIuNSIvPgogIDxwb2x5bGluZSBwb2ludHM9IjgsMzIgMTksMzIgMjMsMTkgMjksNDUgMzUsMTMgMzksMzIgNTYsMzIiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzIyYzU1ZSIgc3Ryb2tlLXdpZHRoPSIzLjUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPgo8L3N2Zz4K">
 <style>
-  :root { color-scheme: light; }
+  :root {
+    color-scheme: light;
+    --bg: #f7f8fa; --surface: #ffffff; --surface-2: #fafafa;
+    --border: #e5e7eb; --border-light: #eee; --row-alt: #f0f1f3; --btn-hover: #f3f4f6;
+    --text-primary: #1a1d23; --text-secondary: #6b7280; --text-muted: #9ca3af; --text-faint: #374151;
+    --chip-run-bg: #dbeafe; --chip-run-text: #1e40af;
+    --chip-strength-bg: #fef3c7; --chip-strength-text: #92400e;
+    --chip-other-bg: #ede9fe; --chip-other-text: #5b21b6;
+    --readiness-poor-bg: #fecaca; --readiness-poor-text: #7f1d1d;
+    --readiness-low-bg: #fee2e2; --readiness-low-text: #991b1b;
+    --readiness-moderate-bg: #fef3c7; --readiness-moderate-text: #92400e;
+    --readiness-high-bg: #dcfce7; --readiness-high-text: #166534;
+    --readiness-none-bg: #f3f4f6; --readiness-none-text: #6b7280;
+    --sleepscore-good-bg: #dbeafe; --sleepscore-good-text: #1e40af;
+    --pos-color: #059669; --neg-color: #dc2626; --err-color: #dc2626; --loading-color: #9ca3af;
+    --chart-grid: #f0f1f3; --chart-text: #6b7280;
+  }
+  [data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #0f1115; --surface: #1a1d23; --surface-2: #20242c;
+    --border: #2d3139; --border-light: #2d3139; --row-alt: #20242c; --btn-hover: #262b34;
+    --text-primary: #f3f4f6; --text-secondary: #9ca3af; --text-muted: #6b7280; --text-faint: #d1d5db;
+    --chip-run-bg: #1e3a5f; --chip-run-text: #93c5fd;
+    --chip-strength-bg: #4a3a0e; --chip-strength-text: #fcd34d;
+    --chip-other-bg: #382c5c; --chip-other-text: #c4b5fd;
+    --readiness-poor-bg: #4a1f1f; --readiness-poor-text: #fca5a5;
+    --readiness-low-bg: #422323; --readiness-low-text: #fca5a5;
+    --readiness-moderate-bg: #4a3a0e; --readiness-moderate-text: #fcd34d;
+    --readiness-high-bg: #133a24; --readiness-high-text: #86efac;
+    --readiness-none-bg: #2d3139; --readiness-none-text: #9ca3af;
+    --sleepscore-good-bg: #1e3a5f; --sleepscore-good-text: #93c5fd;
+    --pos-color: #34d399; --neg-color: #f87171; --err-color: #f87171; --loading-color: #6b7280;
+    --chart-grid: #2d3139; --chart-text: #9ca3af;
+  }
   * { box-sizing: border-box; }
   body {
     margin: 0; padding: 20px;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    background: #f7f8fa; color: #1a1d23;
+    background: var(--bg); color: var(--text-primary);
   }
   h1 { font-size: 20px; margin: 0 0 4px; }
-  .subtitle { color: #6b7280; font-size: 13px; margin: 0 0 20px; }
-  .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 16px; margin-bottom: 20px; }
-  .card h2 { font-size: 14px; margin: 0 0 12px; color: #1a1d23; }
+  .subtitle { color: var(--text-secondary); font-size: 13px; margin: 0 0 20px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 20px; }
+  .card h2 { font-size: 14px; margin: 0 0 12px; color: var(--text-primary); }
   .chart-wrap { position: relative; height: 260px; }
   table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
-  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #f0f1f3; }
-  th { color: #6b7280; font-weight: 500; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--row-alt); color: var(--text-primary); }
+  th { color: var(--text-secondary); font-weight: 500; }
   tr:last-child td { border-bottom: none; }
   .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
   @media (max-width: 720px) { .grid2 { grid-template-columns: 1fr; } .controls-row { grid-template-columns: 1fr !important; } }
-  .corr-note { font-size: 12px; color: #6b7280; margin-top: 8px; line-height: 1.5; }
+  .corr-note { font-size: 12px; color: var(--text-secondary); margin-top: 8px; line-height: 1.5; }
   .corr-value { font-weight: 700; }
-  .pos { color: #059669; }
-  .neg { color: #dc2626; }
-  .loading { color: #9ca3af; font-size: 13px; padding: 40px 0; text-align: center; }
-  .err { color: #dc2626; font-size: 12.5px; }
+  .pos { color: var(--pos-color); }
+  .neg { color: var(--neg-color); }
+  .loading { color: var(--loading-color); font-size: 13px; padding: 40px 0; text-align: center; }
+  .err { color: var(--err-color); font-size: 12.5px; }
 
   .controls-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-  .control-group label { display: block; font-size: 11px; color: #6b7280; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 6px; }
+  .control-group label { display: block; font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 6px; }
   .presets { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
   .preset-btn {
-    font-size: 12px; padding: 5px 10px; border-radius: 999px; border: 1px solid #e5e7eb;
-    background: #fff; color: #374151; cursor: pointer;
+    font-size: 12px; padding: 5px 10px; border-radius: 999px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--text-faint); cursor: pointer;
   }
-  .preset-btn:hover { background: #f3f4f6; }
-  .preset-btn.active { background: #1a1d23; color: #fff; border-color: #1a1d23; }
+  .preset-btn:hover { background: var(--btn-hover); }
+  .preset-btn.active { background: var(--text-primary); color: var(--bg); border-color: var(--text-primary); }
   .custom-dates { display: flex; gap: 8px; align-items: center; margin-top: 6px; }
   .custom-dates input[type=date] {
-    font-size: 12.5px; padding: 5px 8px; border: 1px solid #e5e7eb; border-radius: 6px; color: #1a1d23;
+    font-size: 12.5px; padding: 5px 8px; border: 1px solid var(--border); border-radius: 6px; color: var(--text-primary);
+    background: var(--surface);
   }
-  .type-row { margin-top: 16px; padding-top: 16px; border-top: 1px solid #f0f1f3; }
+  .type-row { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--row-alt); }
 
   .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-top: 16px; }
-  .kpi { background: #fafafa; border: 1px solid #eee; border-radius: 10px; padding: 14px 16px; }
-  .kpi .label { font-size: 11px; color: #6b7280; text-transform: uppercase; letter-spacing: .04em; }
-  .kpi .value { font-size: 22px; font-weight: 600; margin-top: 4px; }
+  .kpi { background: var(--surface-2); border: 1px solid var(--border-light); border-radius: 10px; padding: 14px 16px; }
+  .kpi .label { font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .04em; }
+  .kpi .value { font-size: 22px; font-weight: 600; margin-top: 4px; color: var(--text-primary); }
   .kpi .cmp { font-size: 12px; margin-top: 4px; }
   .kpi .cmp .arrow { font-weight: 700; }
 
-  .topnav { position: sticky; top: 0; background: #f7f8fa; z-index: 10; display: flex; gap: 6px; flex-wrap: wrap; padding: 10px 0 14px; margin-bottom: 6px; border-bottom: 1px solid #e5e7eb; }
-  .topnav button { font: inherit; font-size: 12.5px; color: #374151; padding: 6px 12px; border-radius: 999px; border: 1px solid #e5e7eb; background: #fff; cursor: pointer; }
-  .topnav button:hover { background: #f3f4f6; }
+  .topnav { position: sticky; top: 0; background: var(--bg); z-index: 10; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; padding: 10px 0 14px; margin-bottom: 6px; border-bottom: 1px solid var(--border); }
+  .topnav button { font: inherit; font-size: 12.5px; color: var(--text-faint); padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); cursor: pointer; }
+  .topnav button:hover { background: var(--btn-hover); }
+  .topnav .theme-btn { margin-left: auto; }
 
   .cal-header { display: flex; align-items: center; justify-content: center; gap: 16px; margin-bottom: 12px; }
-  .cal-header button { font-size: 13px; padding: 5px 12px; border-radius: 999px; border: 1px solid #e5e7eb; background: #fff; cursor: pointer; }
-  .cal-header button:hover { background: #f3f4f6; }
-  .cal-header .cal-month-label { font-size: 14px; font-weight: 600; text-transform: capitalize; min-width: 140px; text-align: center; }
+  .cal-header button { font-size: 13px; padding: 5px 12px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--text-primary); cursor: pointer; }
+  .cal-header button:hover { background: var(--btn-hover); }
+  .cal-header .cal-month-label { font-size: 14px; font-weight: 600; text-transform: capitalize; min-width: 140px; text-align: center; color: var(--text-primary); }
   .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
-  .cal-dow { font-size: 11px; color: #6b7280; text-transform: uppercase; text-align: center; padding: 4px 0; }
-  .cal-day { background: #fafafa; border: 1px solid #eee; border-radius: 8px; min-height: 78px; padding: 6px; font-size: 10.5px; min-width: 0; overflow: hidden; }
+  .cal-dow { font-size: 11px; color: var(--text-secondary); text-transform: uppercase; text-align: center; padding: 4px 0; }
+  .cal-day { background: var(--surface-2); border: 1px solid var(--border-light); border-radius: 8px; min-height: 78px; padding: 6px; font-size: 10.5px; min-width: 0; overflow: hidden; }
   .cal-day.empty { background: transparent; border-color: transparent; }
-  .cal-day.today { border-color: #1a1d23; border-width: 2px; }
-  .cal-daynum { font-size: 11px; color: #9ca3af; margin-bottom: 4px; display: flex; align-items: center; justify-content: space-between; gap: 4px; }
+  .cal-day.today { border-color: var(--text-primary); border-width: 2px; }
+  .cal-daynum { font-size: 11px; color: var(--text-muted); margin-bottom: 4px; display: flex; align-items: center; justify-content: space-between; gap: 4px; }
   .cal-meta { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
-  .cal-sleep { color: #6b7280; white-space: nowrap; }
+  .cal-sleep { color: var(--text-secondary); white-space: nowrap; }
   .cal-readiness { display: inline-block; min-width: 16px; text-align: center; padding: 0 4px; border-radius: 999px; font-weight: 700; }
-  .cal-readiness.poor { background: #fecaca; color: #7f1d1d; }
-  .cal-readiness.low { background: #fee2e2; color: #991b1b; }
-  .cal-readiness.moderate { background: #fef3c7; color: #92400e; }
-  .cal-readiness.high, .cal-readiness.very_high, .cal-readiness.prime { background: #dcfce7; color: #166534; }
-  .cal-readiness.none { background: #f3f4f6; color: #6b7280; }
+  .cal-readiness.poor { background: var(--readiness-poor-bg); color: var(--readiness-poor-text); }
+  .cal-readiness.low { background: var(--readiness-low-bg); color: var(--readiness-low-text); }
+  .cal-readiness.moderate { background: var(--readiness-moderate-bg); color: var(--readiness-moderate-text); }
+  .cal-readiness.high, .cal-readiness.very_high, .cal-readiness.prime { background: var(--readiness-high-bg); color: var(--readiness-high-text); }
+  .cal-readiness.none { background: var(--readiness-none-bg); color: var(--readiness-none-text); }
   .cal-sleepscore { display: inline-block; min-width: 16px; text-align: center; padding: 0 4px; border-radius: 999px; font-weight: 700; }
-  .cal-sleepscore.poor { background: #fecaca; color: #7f1d1d; }
-  .cal-sleepscore.fair { background: #fef3c7; color: #92400e; }
-  .cal-sleepscore.good { background: #dbeafe; color: #1e40af; }
-  .cal-sleepscore.excellent { background: #dcfce7; color: #166534; }
-  .cal-chip { border-radius: 6px; padding: 2px 5px; margin-bottom: 3px; line-height: 1.4; background: #dbeafe; color: #1e40af; overflow-wrap: anywhere; word-break: break-word; }
-  .cal-chip.strength { background: #fef3c7; color: #92400e; }
-  .cal-chip.other { background: #ede9fe; color: #5b21b6; }
-  .cal-week-summary { grid-column: 1 / -1; background: #fafafa; border: 1px dashed #e5e7eb; border-radius: 8px; padding: 6px 10px; font-size: 11px; color: #374151; display: flex; flex-wrap: wrap; gap: 4px 16px; margin: -2px 0 4px; }
-  .cal-week-summary b { color: #1a1d23; }
-  .cal-week-summary .empty-week { color: #9ca3af; }
+  .cal-sleepscore.poor { background: var(--readiness-poor-bg); color: var(--readiness-poor-text); }
+  .cal-sleepscore.fair { background: var(--readiness-moderate-bg); color: var(--readiness-moderate-text); }
+  .cal-sleepscore.good { background: var(--sleepscore-good-bg); color: var(--sleepscore-good-text); }
+  .cal-sleepscore.excellent { background: var(--readiness-high-bg); color: var(--readiness-high-text); }
+  .cal-chip { border-radius: 6px; padding: 2px 5px; margin-bottom: 3px; line-height: 1.4; background: var(--chip-run-bg); color: var(--chip-run-text); overflow-wrap: anywhere; word-break: break-word; }
+  .cal-chip.strength { background: var(--chip-strength-bg); color: var(--chip-strength-text); }
+  .cal-chip.other { background: var(--chip-other-bg); color: var(--chip-other-text); }
+  .cal-week-summary { grid-column: 1 / -1; background: var(--surface-2); border: 1px dashed var(--border); border-radius: 8px; padding: 6px 10px; font-size: 11px; color: var(--text-faint); display: flex; flex-wrap: wrap; gap: 4px 16px; margin: -2px 0 4px; }
+  .cal-week-summary b { color: var(--text-primary); }
+  .cal-week-summary .empty-week { color: var(--text-muted); }
 
   .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 
@@ -122,6 +157,7 @@
     <button type="button" onclick="scrollToSection('vo2max')">VO2max</button>
     <button type="button" onclick="scrollToSection('previsao')">Previsão de prova</button>
     <button type="button" onclick="scrollToSection('mensal')">Visão mensal</button>
+    <button type="button" class="theme-btn" id="themeToggle" onclick="toggleTheme()">Modo escuro</button>
   </nav>
 
   <div class="card" id="periodo">
@@ -189,11 +225,11 @@
     <div id="predKpis" class="kpis"><div class="loading">Carregando...</div></div>
     <div id="predChartsWrap" class="grid2" style="margin-top:16px;">
       <div>
-        <div style="font-size:12px;color:#6b7280;margin-bottom:6px;">5K / 10K</div>
+        <div style="font-size:12px;color:var(--text-secondary);margin-bottom:6px;">5K / 10K</div>
         <div class="chart-wrap"><canvas id="predChartShort"></canvas></div>
       </div>
       <div>
-        <div style="font-size:12px;color:#6b7280;margin-bottom:6px;">21K (meia) / 42K (maratona)</div>
+        <div style="font-size:12px;color:var(--text-secondary);margin-bottom:6px;">21K (meia) / 42K (maratona)</div>
         <div class="chart-wrap"><canvas id="predChartLong"></canvas></div>
       </div>
     </div>
@@ -208,6 +244,29 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.0/dist/chart.umd.js" integrity="sha384-iU8HYtnGQ8Cy4zl7gbNMOhsDTTKX02BTXptVP/vqAWIaTfM7isw76iyZCsjL2eVi" crossorigin="anonymous"></script>
 <script>
+const THEME_KEY = "garmin-dash-theme";
+function getPreferredTheme() {
+  try { const saved = localStorage.getItem(THEME_KEY); if (saved === "dark" || saved === "light") return saved; } catch (e) {}
+  return (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) ? "dark" : "light";
+}
+function applyTheme(theme) {
+  document.documentElement.setAttribute("data-theme", theme);
+  const btn = document.getElementById("themeToggle");
+  if (btn) btn.textContent = theme === "dark" ? "Modo claro" : "Modo escuro";
+  try { localStorage.setItem(THEME_KEY, theme); } catch (e) {}
+}
+function toggleTheme() {
+  const current = document.documentElement.getAttribute("data-theme") || "light";
+  applyTheme(current === "dark" ? "light" : "dark");
+  redrawAll();
+}
+applyTheme(getPreferredTheme());
+
+function chartTheme() {
+  const dark = document.documentElement.getAttribute("data-theme") === "dark";
+  return { text: dark ? "#9ca3af" : "#6b7280", grid: dark ? "#2d3139" : "#f0f1f3" };
+}
+
 const API_BASE = "https://garmin-edmilson-report-em2411.up.railway.app";
 async function apiGet(path, params) {
   const url = new URL(API_BASE + path);
@@ -572,7 +631,7 @@ function renderCalendar() {
     if (weekStrengthSec > 0) summaryParts.push(`Força: <b>${fmtDuration(weekStrengthSec)}</b>`);
     if (weekOtherSec > 0) summaryParts.push(`Outros: <b>${fmtDuration(weekOtherSec)}</b>`);
     html += weekCellsHtml;
-    html += `<div class="cal-week-summary">${weekHasData ? summaryParts.join('<span style="color:#d1d5db;">|</span>') : '<span class="empty-week">Semana sem atividades registradas</span>'}</div>`;
+    html += `<div class="cal-week-summary">${weekHasData ? summaryParts.join('<span style="color:var(--text-muted);">|</span>') : '<span class="empty-week">Semana sem atividades registradas</span>'}</div>`;
   }
   document.getElementById('calGrid').innerHTML = html;
 }
@@ -589,6 +648,7 @@ function monthlyIsDistanceBased(months) {
 function renderMonthly() {
   const months = computeMonthly(ALL_DAILY, ALL_ACTIVITIES, state.activityType).slice(-8);
   const distBased = monthlyIsDistanceBased(months);
+  const ct = chartTheme();
   destroyChart('monthly');
   charts.monthly = new Chart(document.getElementById('monthlyChart'), {
     data: { labels: months.map(m => m.month), datasets: [
@@ -598,8 +658,10 @@ function renderMonthly() {
       { type: 'line', label: 'Sono (h)', data: months.map(m => parseFloat(m.avg_sleep_hours || 0)), borderColor: '#f97316', backgroundColor: '#f97316', yAxisID: 'y1', tension: .3 },
     ]},
     options: { responsive: true, maintainAspectRatio: false,
-      scales: { y: { position: 'left', title: { display: true, text: distBased ? 'km' : 'horas de treino' } },
-        y1: { position: 'right', title: { display: true, text: 'horas de sono' }, grid: { drawOnChartArea: false }, suggestedMin: 4, suggestedMax: 9 } } }
+      plugins: { legend: { labels: { color: ct.text } } },
+      scales: { y: { position: 'left', title: { display: true, text: distBased ? 'km' : 'horas de treino', color: ct.text }, ticks: { color: ct.text }, grid: { color: ct.grid } },
+        y1: { position: 'right', title: { display: true, text: 'horas de sono', color: ct.text }, ticks: { color: ct.text }, grid: { drawOnChartArea: false }, suggestedMin: 4, suggestedMax: 9 },
+        x: { ticks: { color: ct.text }, grid: { color: ct.grid } } } }
   });
   document.getElementById('monthlyTable').innerHTML = `<div class="table-scroll"><table><thead><tr>
       <th>Mês</th><th>${distBased ? 'Km' : 'Tempo'}</th><th>Ativ.</th><th>Sono (h)</th><th>RHR</th><th>Profundo %</th><th>REM %</th>
@@ -614,9 +676,10 @@ function renderAll() {
   const summary = summarize(ALL_DAILY, ALL_CORR, ALL_ACTIVITIES, ps, pe, state.activityType);
   const cmpSummary = state.cmpRange ? summarize(ALL_DAILY, ALL_CORR, ALL_ACTIVITIES, state.cmpRange[0], state.cmpRange[1], state.activityType) : null;
   const isDistanceBased = summary.total_km > 0.01;
+  const ct = chartTheme();
 
   const kpisEl = document.getElementById('kpis');
-  const cmpLabel = state.cmpRange ? ` <span style="font-weight:400;color:#9ca3af;">(vs ${fmtDate(state.cmpRange[0])} a ${fmtDate(state.cmpRange[1])})</span>` : '';
+  const cmpLabel = state.cmpRange ? ` <span style="font-weight:400;color:var(--text-muted);">(vs ${fmtDate(state.cmpRange[0])} a ${fmtDate(state.cmpRange[1])})</span>` : '';
   const r1 = v => v == null ? '—' : v.toFixed(1);
   const r2 = v => v == null ? '—' : v.toFixed(2);
 
@@ -644,12 +707,12 @@ function renderAll() {
   const vo2 = latestVo2max(ALL_DAILY, ps, pe);
   const vo2Cmp = cmpSummary && state.cmpRange ? latestVo2max(ALL_DAILY, state.cmpRange[0], state.cmpRange[1]) : null;
   const vo2KpiHtml = vo2
-    ? `<div class="kpi"><div class="label">VO2max</div><div class="value">${r1(vo2.value)}</div>${vo2Cmp ? kpiCmp(vo2.value, vo2Cmp.value, '', false) : ''}<div style="font-size:11px;color:#9ca3af;margin-top:2px;">em ${vo2.date}</div></div>`
+    ? `<div class="kpi"><div class="label">VO2max</div><div class="value">${r1(vo2.value)}</div>${vo2Cmp ? kpiCmp(vo2.value, vo2Cmp.value, '', false) : ''}<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">em ${vo2.date}</div></div>`
     : '';
 
   const readiness = latestReadiness(ALL_DAILY, ps, pe);
   const readinessKpiHtml = readiness
-    ? `<div class="kpi"><div class="label">Training Readiness</div><div class="value">${readiness.readiness_score ?? '—'}</div><div style="font-size:12px;color:#6b7280;margin-top:2px;">${READINESS_LABELS[readiness.readiness_level] || readiness.readiness_level}</div><div style="font-size:11px;color:#9ca3af;margin-top:2px;">em ${readiness.date}</div></div>`
+    ? `<div class="kpi"><div class="label">Training Readiness</div><div class="value">${readiness.readiness_score ?? '—'}</div><div style="font-size:12px;color:var(--text-secondary);margin-top:2px;">${READINESS_LABELS[readiness.readiness_level] || readiness.readiness_level}</div><div style="font-size:11px;color:var(--text-muted);margin-top:2px;">em ${readiness.date}</div></div>`
     : '';
 
   kpisEl.innerHTML = `
@@ -662,7 +725,7 @@ function renderAll() {
     ${cadenceKpiHtml}
     ${vo2KpiHtml}
     ${readinessKpiHtml}
-    <div style="grid-column:1/-1;font-size:11px;color:#9ca3af;">${fmtDate(ps)} a ${fmtDate(pe)}${cmpLabel}</div>
+    <div style="grid-column:1/-1;font-size:11px;color:var(--text-muted);">${fmtDate(ps)} a ${fmtDate(pe)}${cmpLabel}</div>
   `;
 
   // ---- daily chart: km or hours of training, depending on mode ----
@@ -686,8 +749,10 @@ function renderAll() {
       { type: 'line', label: 'Sono (h)', data: daily.map(d => d.sleep_hours != null ? parseFloat(d.sleep_hours) : null), borderColor: '#f97316', borderWidth: 1.5, pointRadius: 2, yAxisID: 'y1', tension: .3, spanGaps: true },
     ]},
     options: { responsive: true, maintainAspectRatio: false,
-      scales: { x: { ticks: { maxTicksLimit: 10 } }, y: { position: 'left', title: { display: true, text: isDistanceBased ? 'km' : 'horas de treino' } },
-        y1: { position: 'right', title: { display: true, text: 'horas de sono' }, grid: { drawOnChartArea: false } } } }
+      plugins: { legend: { labels: { color: ct.text } } },
+      scales: { x: { ticks: { maxTicksLimit: 10, color: ct.text }, grid: { color: ct.grid } },
+        y: { position: 'left', title: { display: true, text: isDistanceBased ? 'km' : 'horas de treino', color: ct.text }, ticks: { color: ct.text }, grid: { color: ct.grid } },
+        y1: { position: 'right', title: { display: true, text: 'horas de sono', color: ct.text }, ticks: { color: ct.text }, grid: { drawOnChartArea: false } } } }
   });
 
   // ---- correlation: sleep x HR (always relevant) ----
@@ -698,7 +763,9 @@ function renderAll() {
     type: 'scatter',
     data: { datasets: [{ label: 'Dia de treino', data: hrPairs.map(p => ({x: parseFloat(p.sleep_hours), y: parseFloat(p.avg_hr_bpm)})), backgroundColor: '#60a5fa' }] },
     options: { responsive: true, maintainAspectRatio: false,
-      scales: { x: { title: { display: true, text: 'Horas de sono' } }, y: { title: { display: true, text: 'FC média (bpm)' } } } }
+      plugins: { legend: { labels: { color: ct.text } } },
+      scales: { x: { title: { display: true, text: 'Horas de sono', color: ct.text }, ticks: { color: ct.text }, grid: { color: ct.grid } },
+        y: { title: { display: true, text: 'FC média (bpm)', color: ct.text }, ticks: { color: ct.text }, grid: { color: ct.grid } } } }
   });
   const rHr = pearson(hrPairs.map(p=>parseFloat(p.sleep_hours)), hrPairs.map(p=>parseFloat(p.avg_hr_bpm)));
   document.getElementById('corrHrNote').innerHTML = `${fmtR(rHr)} (n=${hrPairs.length})`;
@@ -721,7 +788,9 @@ function renderAll() {
     type: 'scatter',
     data: { datasets: [{ label: 'Dia de treino', data: pacePairs.map(p => ({x: parseFloat(p.sleep_hours), y: pY(p)})), backgroundColor: '#fb923c' }] },
     options: { responsive: true, maintainAspectRatio: false,
-      scales: { x: { title: { display: true, text: 'Horas de sono' } }, y: { title: { display: true, text: isDistanceBased ? 'Ritmo (min/km)' : 'Duração (min)' } } } }
+      plugins: { legend: { labels: { color: ct.text } } },
+      scales: { x: { title: { display: true, text: 'Horas de sono', color: ct.text }, ticks: { color: ct.text }, grid: { color: ct.grid } },
+        y: { title: { display: true, text: isDistanceBased ? 'Ritmo (min/km)' : 'Duração (min)', color: ct.text }, ticks: { color: ct.text }, grid: { color: ct.grid } } } }
   });
   const rPace = pearson(pacePairs.map(p=>parseFloat(p.sleep_hours)), pacePairs.map(pY));
   document.getElementById('corrPaceNote').innerHTML = `${fmtR(rPace)} (n=${pacePairs.length})`;
@@ -740,11 +809,11 @@ function renderPredictions() {
   }
   const paceFor = (seconds, km) => (seconds != null) ? `${fmtPace((seconds/60)/km)} /km` : '';
   el.innerHTML = `
-    <div class="kpi"><div class="label">5K</div><div class="value">${fmtRaceTime(latest.pred_5k_seconds)}</div><div style="font-size:11px;color:#9ca3af;">${paceFor(latest.pred_5k_seconds, 5)}</div></div>
-    <div class="kpi"><div class="label">10K</div><div class="value">${fmtRaceTime(latest.pred_10k_seconds)}</div><div style="font-size:11px;color:#9ca3af;">${paceFor(latest.pred_10k_seconds, 10)}</div></div>
-    <div class="kpi"><div class="label">21K (meia)</div><div class="value">${fmtRaceTime(latest.pred_half_seconds)}</div><div style="font-size:11px;color:#9ca3af;">${paceFor(latest.pred_half_seconds, 21.0975)}</div></div>
-    <div class="kpi"><div class="label">42K (maratona)</div><div class="value">${fmtRaceTime(latest.pred_marathon_seconds)}</div><div style="font-size:11px;color:#9ca3af;">${paceFor(latest.pred_marathon_seconds, 42.195)}</div></div>
-    <div style="grid-column:1/-1;font-size:11px;color:#9ca3af;">Estimativa mais recente: ${latest.date}</div>
+    <div class="kpi"><div class="label">5K</div><div class="value">${fmtRaceTime(latest.pred_5k_seconds)}</div><div style="font-size:11px;color:var(--text-muted);">${paceFor(latest.pred_5k_seconds, 5)}</div></div>
+    <div class="kpi"><div class="label">10K</div><div class="value">${fmtRaceTime(latest.pred_10k_seconds)}</div><div style="font-size:11px;color:var(--text-muted);">${paceFor(latest.pred_10k_seconds, 10)}</div></div>
+    <div class="kpi"><div class="label">21K (meia)</div><div class="value">${fmtRaceTime(latest.pred_half_seconds)}</div><div style="font-size:11px;color:var(--text-muted);">${paceFor(latest.pred_half_seconds, 21.0975)}</div></div>
+    <div class="kpi"><div class="label">42K (maratona)</div><div class="value">${fmtRaceTime(latest.pred_marathon_seconds)}</div><div style="font-size:11px;color:var(--text-muted);">${paceFor(latest.pred_marathon_seconds, 42.195)}</div></div>
+    <div style="grid-column:1/-1;font-size:11px;color:var(--text-muted);">Estimativa mais recente: ${latest.date}</div>
   `;
   const points = ALL_DAILY
     .filter(d => d.pred_5k_seconds != null || d.pred_10k_seconds != null || d.pred_half_seconds != null || d.pred_marathon_seconds != null)
@@ -764,15 +833,16 @@ function renderPredictions() {
   }
   chartsWrap.innerHTML = `
     <div>
-      <div style="font-size:12px;color:#6b7280;margin-bottom:6px;">5K / 10K</div>
+      <div style="font-size:12px;color:var(--text-secondary);margin-bottom:6px;">5K / 10K</div>
       <div class="chart-wrap"><canvas id="predChartShort"></canvas></div>
     </div>
     <div>
-      <div style="font-size:12px;color:#6b7280;margin-bottom:6px;">21K (meia) / 42K (maratona)</div>
+      <div style="font-size:12px;color:var(--text-secondary);margin-bottom:6px;">21K (meia) / 42K (maratona)</div>
       <div class="chart-wrap"><canvas id="predChartLong"></canvas></div>
     </div>
   `;
-  const axisTicks = { callback: v => fmtRaceTime(v) };
+  const ct = chartTheme();
+  const axisTicks = { callback: v => fmtRaceTime(v), color: ct.text };
   const tooltipFmt = { callbacks: { label: ctx => `${ctx.dataset.label}: ${fmtRaceTime(ctx.raw)}` } };
   charts.predShort = new Chart(document.getElementById('predChartShort'), {
     type: 'line',
@@ -781,8 +851,8 @@ function renderPredictions() {
       { label: '10K', data: points.map(p => p.p10k), borderColor: '#22c55e', backgroundColor: '#22c55e', tension: .3, pointRadius: 3, spanGaps: true },
     ]},
     options: { responsive: true, maintainAspectRatio: false,
-      plugins: { tooltip: tooltipFmt },
-      scales: { y: { ticks: axisTicks } } }
+      plugins: { tooltip: tooltipFmt, legend: { labels: { color: ct.text } } },
+      scales: { y: { ticks: axisTicks, grid: { color: ct.grid } }, x: { ticks: { color: ct.text }, grid: { color: ct.grid } } } }
   });
   charts.predLong = new Chart(document.getElementById('predChartLong'), {
     type: 'line',
@@ -791,9 +861,39 @@ function renderPredictions() {
       { label: '42K (maratona)', data: points.map(p => p.pmarathon), borderColor: '#dc2626', backgroundColor: '#dc2626', tension: .3, pointRadius: 3, spanGaps: true },
     ]},
     options: { responsive: true, maintainAspectRatio: false,
-      plugins: { tooltip: tooltipFmt },
-      scales: { y: { ticks: axisTicks } } }
+      plugins: { tooltip: tooltipFmt, legend: { labels: { color: ct.text } } },
+      scales: { y: { ticks: axisTicks, grid: { color: ct.grid } }, x: { ticks: { color: ct.text }, grid: { color: ct.grid } } } }
   });
+}
+
+function renderVo2Chart() {
+  const vo2Points = ALL_DAILY.filter(d => d.vo2max != null).map(d => ({ date: d.date, value: parseFloat(d.vo2max) }));
+  const wrap = document.getElementById('vo2Chart').parentElement.parentElement;
+  destroyChart('vo2');
+  if (vo2Points.length) {
+    wrap.style.display = '';
+    const ct = chartTheme();
+    charts.vo2 = new Chart(document.getElementById('vo2Chart'), {
+      type: 'line',
+      data: { labels: vo2Points.map(p => p.date), datasets: [
+        { label: 'VO2max', data: vo2Points.map(p => p.value), borderColor: '#059669', backgroundColor: '#059669', tension: .3, pointRadius: 3 },
+      ]},
+      options: { responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { labels: { color: ct.text } } },
+        scales: { y: { title: { display: true, text: 'ml/kg/min', color: ct.text }, ticks: { color: ct.text }, grid: { color: ct.grid } },
+          x: { ticks: { color: ct.text }, grid: { color: ct.grid } } } }
+    });
+  } else {
+    wrap.style.display = 'none';
+  }
+}
+
+function redrawAll() {
+  if (!ALL_DAILY.length) return;
+  renderCalendar();
+  renderVo2Chart();
+  renderPredictions();
+  renderAll();
 }
 
 async function init() {
@@ -820,21 +920,8 @@ async function init() {
 
     document.getElementById('subtitleText').textContent = `${ALL_DAILY.length} dias de histórico carregados (desde março/2025). Sincronizado diariamente do Garmin Connect.`;
 
-    const vo2Points = ALL_DAILY.filter(d => d.vo2max != null).map(d => ({ date: d.date, value: parseFloat(d.vo2max) }));
-    if (vo2Points.length) {
-      charts.vo2 = new Chart(document.getElementById('vo2Chart'), {
-        type: 'line',
-        data: { labels: vo2Points.map(p => p.date), datasets: [
-          { label: 'VO2max', data: vo2Points.map(p => p.value), borderColor: '#059669', backgroundColor: '#059669', tension: .3, pointRadius: 3 },
-        ]},
-        options: { responsive: true, maintainAspectRatio: false,
-          scales: { y: { title: { display: true, text: 'ml/kg/min' } } } }
-      });
-    } else {
-      document.getElementById('vo2Chart').parentElement.parentElement.style.display = 'none';
-    }
-
     renderCalendar();
+    renderVo2Chart();
     renderPredictions();
     renderAll();
   } catch (e) {
