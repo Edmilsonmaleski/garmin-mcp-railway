@@ -155,7 +155,7 @@
     <button type="button" onclick="scrollToSection('diario')">Série diária</button>
     <button type="button" onclick="scrollToSection('correlacoes')">Correlações</button>
     <button type="button" onclick="scrollToSection('vo2max')">VO2max</button>
-    <button type="button" onclick="scrollToSection('previsao')">Previsão de prova</button>
+    <button type="button" onclick="scrollToSection('recordes')">Recordes x Previsão</button>
     <button type="button" onclick="scrollToSection('mensal')">Visão mensal</button>
     <button type="button" class="theme-btn" id="themeToggle" onclick="toggleTheme()">Modo escuro</button>
   </nav>
@@ -220,9 +220,14 @@
     <div class="corr-note">Estimativa do Garmin (algoritmo Firstbeat) — atualiza esporadicamente, não todo dia.</div>
   </div>
 
-  <div class="card" id="previsao">
-    <h2>Previsão de prova (Garmin)</h2>
-    <div id="predKpis" class="kpis"><div class="loading">Carregando...</div></div>
+  <div class="card" id="recordes">
+    <h2>Recordes pessoais &times; Previsão de prova (Garmin)</h2>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Distância</th><th>Recorde pessoal</th><th>Previsão atual</th><th>Diferença</th></tr></thead>
+        <tbody id="recordesTableBody"><tr><td colspan="4"><div class="loading">Carregando...</div></td></tr></tbody>
+      </table>
+    </div>
     <div id="predChartsWrap" class="grid2" style="margin-top:16px;">
       <div>
         <div style="font-size:12px;color:var(--text-secondary);margin-bottom:6px;">5K / 10K</div>
@@ -233,11 +238,11 @@
         <div class="chart-wrap"><canvas id="predChartLong"></canvas></div>
       </div>
     </div>
-    <div class="corr-note">Estimativa da Garmin com base em VO2max e treinos recentes — não é uma promessa de tempo de prova. Histórico completo a partir de 01/03/2026 (quando a Garmin passou a calcular a previsão para esta conta).</div>
+    <div class="corr-note">Recorde: melhor marca já registrada pelo Garmin. Previsão: estimativa da Garmin com base em VO2max e treinos recentes, não é uma promessa de tempo de prova. Diferença negativa (verde) = previsão mais rápida que o recorde atual. Histórico de previsão a partir de 01/03/2026.</div>
   </div>
 
   <div class="card" id="mensal">
-    <h2>Visão geral — últimos 8 meses</h2>
+    <h2>Visão geral — últimos 13 meses</h2>
     <div class="chart-wrap"><canvas id="monthlyChart"></canvas></div>
     <div id="monthlyTable" style="margin-top:16px;"><div class="loading">Carregando...</div></div>
   </div>
@@ -646,7 +651,7 @@ function monthlyIsDistanceBased(months) {
 }
 
 function renderMonthly() {
-  const months = computeMonthly(ALL_DAILY, ALL_ACTIVITIES, state.activityType).slice(-8);
+  const months = computeMonthly(ALL_DAILY, ALL_ACTIVITIES, state.activityType).slice(-13);
   const distBased = monthlyIsDistanceBased(months);
   const ct = chartTheme();
   destroyChart('monthly');
@@ -798,23 +803,46 @@ function renderAll() {
   renderMonthly();
 }
 
+const PERSONAL_RECORDS = {
+  p5k: { seconds: 1192, label: '19:52', date: '09/11/2025' },
+  p10k: { seconds: 2475, label: '41:15', date: '09/11/2025' },
+  phalf: { seconds: 5493, label: '1:31:33', date: '26/07/2026' },
+  pmarathon: null,
+};
+function raceDiffLabel(predSeconds, recSeconds) {
+  if (predSeconds == null || recSeconds == null) return '—';
+  const d = predSeconds - recSeconds;
+  if (Math.abs(d) < 1) return '<span>=</span>';
+  const sign = d < 0 ? '-' : '+';
+  const abs = Math.round(Math.abs(d));
+  const h = Math.floor(abs / 3600), m = Math.floor((abs % 3600) / 60), s = abs % 60;
+  const str = h > 0 ? `${sign}${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}` : `${sign}${m}:${String(s).padStart(2,'0')}`;
+  const cls = d < 0 ? 'pos' : 'neg';
+  return `<span class="${cls}">${str}</span>`;
+}
+function renderRecordsTable(latest) {
+  const rows = [
+    ['5 km', PERSONAL_RECORDS.p5k, latest ? latest.pred_5k_seconds : null],
+    ['10 km', PERSONAL_RECORDS.p10k, latest ? latest.pred_10k_seconds : null],
+    ['21 km (meia)', PERSONAL_RECORDS.phalf, latest ? latest.pred_half_seconds : null],
+    ['42 km (maratona)', PERSONAL_RECORDS.pmarathon, latest ? latest.pred_marathon_seconds : null],
+  ];
+  document.getElementById('recordesTableBody').innerHTML = rows.map(([label, rec, predSeconds]) => {
+    const recCell = rec ? `${rec.label} <span style="color:var(--text-muted);font-size:11px;">(${rec.date})</span>` : '— <span style="color:var(--text-muted);font-size:11px;">(estreia em 18/10/2026)</span>';
+    const predCell = predSeconds != null ? fmtRaceTime(predSeconds) : '—';
+    const diffCell = rec ? raceDiffLabel(predSeconds, rec.seconds) : '—';
+    return `<tr><td>${label}</td><td>${recCell}</td><td>${predCell}</td><td>${diffCell}</td></tr>`;
+  }).join('');
+}
+
 function renderPredictions() {
   const latest = latestPredictions(ALL_DAILY);
-  const el = document.getElementById('predKpis');
   const chartsWrap = document.getElementById('predChartsWrap');
+  renderRecordsTable(latest);
   if (!latest) {
-    el.innerHTML = `<div class="loading">Ainda sem previsões sincronizadas — deve aparecer no próximo sync diário.</div>`;
     chartsWrap.style.display = 'none';
     return;
   }
-  const paceFor = (seconds, km) => (seconds != null) ? `${fmtPace((seconds/60)/km)} /km` : '';
-  el.innerHTML = `
-    <div class="kpi"><div class="label">5K</div><div class="value">${fmtRaceTime(latest.pred_5k_seconds)}</div><div style="font-size:11px;color:var(--text-muted);">${paceFor(latest.pred_5k_seconds, 5)}</div></div>
-    <div class="kpi"><div class="label">10K</div><div class="value">${fmtRaceTime(latest.pred_10k_seconds)}</div><div style="font-size:11px;color:var(--text-muted);">${paceFor(latest.pred_10k_seconds, 10)}</div></div>
-    <div class="kpi"><div class="label">21K (meia)</div><div class="value">${fmtRaceTime(latest.pred_half_seconds)}</div><div style="font-size:11px;color:var(--text-muted);">${paceFor(latest.pred_half_seconds, 21.0975)}</div></div>
-    <div class="kpi"><div class="label">42K (maratona)</div><div class="value">${fmtRaceTime(latest.pred_marathon_seconds)}</div><div style="font-size:11px;color:var(--text-muted);">${paceFor(latest.pred_marathon_seconds, 42.195)}</div></div>
-    <div style="grid-column:1/-1;font-size:11px;color:var(--text-muted);">Estimativa mais recente: ${latest.date}</div>
-  `;
   const points = ALL_DAILY
     .filter(d => d.pred_5k_seconds != null || d.pred_10k_seconds != null || d.pred_half_seconds != null || d.pred_marathon_seconds != null)
     .map(d => ({
@@ -932,3 +960,4 @@ init();
 </script>
 </body>
 </html>
+
