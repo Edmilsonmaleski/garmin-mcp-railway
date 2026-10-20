@@ -818,7 +818,9 @@ function raceDiffLabel(predSeconds, recSeconds) {
   const h = Math.floor(abs / 3600), m = Math.floor((abs % 3600) / 60), s = abs % 60;
   const str = h > 0 ? `${sign}${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}` : `${sign}${m}:${String(s).padStart(2,'0')}`;
   const cls = d < 0 ? 'pos' : 'neg';
-  return `<span class="${cls}">${str}</span>`;
+  const pct = (d / recSeconds) * 100;
+  const pctStr = `${pct < 0 ? '-' : '+'}${Math.abs(pct).toFixed(1)}%`;
+  return `<span class="${cls}">${str} <span style="font-size:11px;">(${pctStr})</span></span>`;
 }
 function renderRecordsTable(latest) {
   const rows = [
