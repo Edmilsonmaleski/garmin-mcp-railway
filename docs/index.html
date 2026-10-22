@@ -260,6 +260,11 @@
     </div>
     <div class="race-legend"><span><i style="background:#f97316"></i>Maratona</span><span><i style="background:#60a5fa"></i>Meia maratona</span><span><i style="background:#9ca3af"></i>Demais</span></div>
     <div class="corr-note">Atividades do Garmin nomeadas como "Local - Prova ..." (treinos como "ritmo de prova" ou "simulado" ficam de fora). Distância e tempo são os do percurso oficial (o relógio costuma marcar um pouco mais); FC média é da atividade inteira.</div>
+    <div style="margin-top:18px;">
+      <div style="font-size:12px;color:var(--text-secondary);margin-bottom:6px;">Evolução do pace e da FC média por distância (pace mais rápido = mais alto)</div>
+      <div class="presets" id="raceChartSel"></div>
+      <div class="chart-wrap"><canvas id="raceChart"></canvas></div>
+    </div>
   </div>
 
   <div class="card" id="mensal">
@@ -896,7 +901,47 @@ function fmtRaceDist(m) {
 const RACE_FIRSTS = { '2025-10-26': '1ª meia', '2026-10-18': '1ª maratona' };
 // Nome da prova quando o Garmin não traz: data -> descrição
 const RACE_DESC = { '2026-09-19': '10km Green Valley', '2026-10-03': '12km Autódromo' };
+let RACE_ROWS = [];
+let RACE_SEL = 'all';
+function renderRaceChart() {
+  const defs = [['all','Todas'],['ten','10 km'],['half','21,1 km'],['full','42,2 km']];
+  renderPresetButtons(document.getElementById('raceChartSel'), defs, RACE_SEL, k => { RACE_SEL = k; renderRaceChart(); });
+  destroyChart('races');
+  const rows = RACE_ROWS.slice().reverse();
+  const filtered = RACE_SEL === 'all' ? rows : rows.filter(r => r.dist === RACE_SEL);
+  const canvas = document.getElementById('raceChart');
+  if (!filtered.length) return;
+  const ct = chartTheme();
+  const colors = { ten: '#9ca3af', half: '#60a5fa', full: '#f97316', other: '#a78bfa' };
+  const names = { ten: '10 km', half: '21,1 km', full: '42,2 km', other: 'Outras' };
+  const dists = RACE_SEL === 'all' ? ['ten', 'half', 'full', 'other'] : [RACE_SEL];
+  const datasets = dists
+    .filter(dk => filtered.some(r => r.dist === dk))
+    .map(dk => ({
+      label: 'Pace ' + names[dk], data: filtered.map(r => r.dist === dk ? r.pace : null),
+      borderColor: colors[dk], backgroundColor: colors[dk], tension: .25, pointRadius: 4, spanGaps: true, yAxisID: 'y',
+    }));
+  datasets.push({ label: 'FC média', data: filtered.map(r => r.hr), borderColor: '#ef4444', backgroundColor: '#ef4444', borderDash: [5, 4], tension: .25, pointRadius: 3, spanGaps: true, yAxisID: 'y1' });
+  charts.races = new Chart(canvas, {
+    type: 'line',
+    data: { labels: filtered.map(r => `${r.date.slice(8, 10)}/${r.date.slice(5, 7)}/${r.date.slice(2, 4)} ${r.place}`), datasets },
+    options: { responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: ct.text } },
+        tooltip: { callbacks: {
+          label: ctx => ctx.raw == null ? null : (ctx.dataset.yAxisID === 'y1' ? `${ctx.dataset.label}: ${ctx.raw} bpm` : `${ctx.dataset.label}: ${fmtPace(ctx.raw)} /km`),
+          footer: items => { const r = filtered[items[0].dataIndex]; return r ? `Tempo: ${fmtRaceTime(r.dur)}` : ''; },
+        } },
+      },
+      scales: {
+        y: { reverse: true, position: 'left', title: { display: true, text: 'pace (min/km)', color: ct.text }, ticks: { color: ct.text, callback: v => fmtPace(v) }, grid: { color: ct.grid } },
+        y1: { position: 'right', title: { display: true, text: 'FC média (bpm)', color: ct.text }, ticks: { color: ct.text }, grid: { drawOnChartArea: false } },
+        x: { ticks: { color: ct.text, maxRotation: 60, autoSkip: false }, grid: { color: ct.grid } },
+      } }
+  });
+}
 function renderRaces() {
+  RACE_ROWS = [];
   const RACE_RE = /^([^-–]+?)\s*[-–]\s*(\d+\s*km\s+)?prova\b(.*)$/i;
   const races = ALL_ACTIVITIES
     .map(a => {
@@ -922,8 +967,11 @@ function renderRaces() {
     const pace = km > 0 && dur ? fmtPace((dur / 60) / km) + ' /km' : '—';
     const hr = a.avg_hr_bpm != null ? Math.round(a.avg_hr_bpm) + ' bpm' : '—';
     const cat = km >= 40 ? 'marathon' : (km >= 20 && km < 23 ? 'half' : 'other');
+    RACE_ROWS.push({ date: a.date, place: m[1].trim(), dur, pace: km > 0 && dur ? (dur / 60) / km : null, hr: a.avg_hr_bpm != null ? Math.round(a.avg_hr_bpm) : null,
+      dist: km >= 40 ? 'full' : (km >= 20 && km < 23 ? 'half' : (km >= 9.5 && km <= 10.5 ? 'ten' : 'other')) });
     return `<tr class="race-${cat}"><td>${d}/${mo}/${y}</td><td>${label}${firstTag}</td><td>${off ? fmtRaceDist(off[0]) : km.toFixed(2) + ' km'}</td><td>${fmtRaceTime(dur)}</td><td>${pace}</td><td>${hr}</td></tr>`;
   }).join('');
+  renderRaceChart();
 }
 
 function renderPredictions() {
