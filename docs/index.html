@@ -122,6 +122,14 @@
   .cal-week-summary b { color: var(--text-primary); }
   .cal-week-summary .empty-week { color: var(--text-muted); }
 
+  tr.race-marathon td { background: rgba(249,115,22,.14); }
+  tr.race-half td { background: rgba(59,130,246,.12); }
+  tr.race-other td { background: rgba(107,114,128,.10); }
+  tr.race-marathon td:first-child { box-shadow: inset 3px 0 0 #f97316; }
+  tr.race-half td:first-child { box-shadow: inset 3px 0 0 #60a5fa; }
+  tr.race-other td:first-child { box-shadow: inset 3px 0 0 #9ca3af; }
+  .race-legend { display:flex; gap:14px; flex-wrap:wrap; font-size:11.5px; color:var(--text-secondary); margin-top:8px; }
+  .race-legend i { display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:5px; vertical-align:-1px; }
   .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 
   @media (max-width: 480px) {
@@ -156,6 +164,7 @@
     <button type="button" onclick="scrollToSection('correlacoes')">Correlações</button>
     <button type="button" onclick="scrollToSection('vo2max')">VO2max</button>
     <button type="button" onclick="scrollToSection('recordes')">Recordes x Previsão</button>
+    <button type="button" onclick="scrollToSection('provas')">Minhas provas</button>
     <button type="button" onclick="scrollToSection('mensal')">Visão mensal</button>
     <button type="button" class="theme-btn" id="themeToggle" onclick="toggleTheme()">Modo escuro</button>
   </nav>
@@ -238,7 +247,19 @@
         <div class="chart-wrap"><canvas id="predChartLong"></canvas></div>
       </div>
     </div>
-    <div class="corr-note">Recorde: melhor marca já registrada pelo Garmin. Previsão: estimativa da Garmin com base em VO2max e treinos recentes, não é uma promessa de tempo de prova. Diferença negativa (verde) = previsão mais rápida que o recorde atual. Histórico de previsão a partir de 01/03/2026.</div>
+    <div class="corr-note">Recorde: melhor marca já registrada pelo Garmin. Previsão: estimativa da Garmin com base em VO2max e treinos recentes, não é uma promessa de tempo de prova. Diferença negativa (vermelho) = previsão mais rápida que o recorde atual (ainda não alcançou a estimativa); positiva (verde) = recorde já superou a previsão. Histórico de previsão a partir de 01/03/2026.</div>
+  </div>
+
+  <div class="card" id="provas">
+    <h2>Minhas provas</h2>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>Data</th><th>Prova</th><th>Distância</th><th>Tempo</th><th>Pace</th><th>FC média</th></tr></thead>
+        <tbody id="provasTableBody"><tr><td colspan="6"><div class="loading">Carregando...</div></td></tr></tbody>
+      </table>
+    </div>
+    <div class="race-legend"><span><i style="background:#f97316"></i>Maratona</span><span><i style="background:#60a5fa"></i>Meia maratona</span><span><i style="background:#9ca3af"></i>Demais</span></div>
+    <div class="corr-note">Atividades do Garmin nomeadas como "Local - Prova ..." (treinos como "ritmo de prova" ou "simulado" ficam de fora). Distância e tempo são os do percurso oficial (o relógio costuma marcar um pouco mais); FC média é da atividade inteira.</div>
   </div>
 
   <div class="card" id="mensal">
@@ -837,7 +858,72 @@ function renderRecordsTable(latest) {
   }).join('');
 }
 
+// Provas cujo nome no Garmin não segue o padrão "Local - Prova": data -> [local, descrição]
+const RACE_EXTRA = {
+  '2026-02-22': ['Lages', 'meia maratona'],
+  '2026-04-26': ['Balneário Camboriú', 'meia maratona'],
+  '2026-05-31': ['João Pessoa', 'meia maratona'],
+  '2026-07-12': ['Porto Alegre', 'meia maratona'],
+  '2026-07-26': ['Matinhos', 'meia maratona'],
+  '2026-08-29': ['Florianópolis', 'meia maratona'],
+};
+// Tempo no percurso oficial (interpolado a partir das parciais do Garmin): data -> [distância oficial em m, tempo em s]
+const RACE_OFFICIAL = {
+  '2025-10-26': [21097.5, 6180],
+  '2025-11-09': [10000, 2494],
+  '2025-12-07': [10000, 2576],
+  '2026-02-01': [10000, 2542],
+  '2026-02-22': [21097.5, 5855],
+  '2026-04-26': [21097.5, 5616],
+  '2026-05-31': [21097.5, 5938],
+  '2026-07-12': [21097.5, 5610],
+  '2026-07-26': [21097.5, 5503],
+  '2026-08-29': [21097.5, 6046],
+  '2026-09-19': [10000, 2532],
+  '2026-10-03': [12000, 3597],
+  '2026-10-18': [42195, 12526],
+};
+function fmtRaceDist(m) {
+  if (m >= 42000) return '42,2 km';
+  if (m >= 21000) return '21,1 km';
+  return (m / 1000).toFixed(0) + ' km';
+}
+// Estreias: data -> rótulo
+const RACE_FIRSTS = { '2025-10-26': '1ª meia', '2026-10-18': '1ª maratona' };
+// Nome da prova quando o Garmin não traz: data -> descrição
+const RACE_DESC = { '2026-09-19': '10km Green Valley', '2026-10-03': '12km Autódromo' };
+function renderRaces() {
+  const RACE_RE = /^([^-–]+?)\s*[-–]\s*(\d+\s*km\s+)?prova\b(.*)$/i;
+  const races = ALL_ACTIVITIES
+    .map(a => {
+      const m = RACE_RE.exec(a.name || '');
+      if (m) return { a, m };
+      const extra = RACE_EXTRA[a.date];
+      if (extra && /running/.test(a.activity_type || '')) return { a, m: [a.name, extra[0], extra[1], ''] };
+      const m2 = /^(meia\s+)?maratona\s+de\s+(.+)$/i.exec(a.name || '');
+      return m2 ? { a, m: [a.name, m2[2], m2[1] ? 'meia maratona' : 'maratona', ''] } : { a, m: null };
+    })
+    .filter(x => x.m)
+    .sort((x, y) => x.a.date < y.a.date ? 1 : -1);
+  const body = document.getElementById('provasTableBody');
+  if (!races.length) { body.innerHTML = '<tr><td colspan="6"><div class="loading">Nenhuma prova encontrada.</div></td></tr>'; return; }
+  body.innerHTML = races.map(({ a, m }) => {
+    const [y, mo, d] = a.date.split('-');
+    const off = RACE_OFFICIAL[a.date];
+    const km = off ? off[0] / 1000 : parseFloat(a.distance_meters || 0) / 1000;
+    const dur = off ? off[1] : parseFloat(a.duration_seconds || 0);
+    const desc = RACE_DESC[a.date] || ((m[2] || '') + (m[3] || '')).trim();
+    const label = desc ? `${m[1].trim()} <span style="color:var(--text-muted);font-size:11px;">(${desc})</span>` : m[1].trim();
+    const firstTag = RACE_FIRSTS[a.date] ? ` <span style="background:var(--chip-strength-bg);color:var(--chip-strength-text);border-radius:999px;padding:1px 7px;font-size:10.5px;font-weight:600;white-space:nowrap;">${RACE_FIRSTS[a.date]}</span>` : '';
+    const pace = km > 0 && dur ? fmtPace((dur / 60) / km) + ' /km' : '—';
+    const hr = a.avg_hr_bpm != null ? Math.round(a.avg_hr_bpm) + ' bpm' : '—';
+    const cat = km >= 40 ? 'marathon' : (km >= 20 && km < 23 ? 'half' : 'other');
+    return `<tr class="race-${cat}"><td>${d}/${mo}/${y}</td><td>${label}${firstTag}</td><td>${off ? fmtRaceDist(off[0]) : km.toFixed(2) + ' km'}</td><td>${fmtRaceTime(dur)}</td><td>${pace}</td><td>${hr}</td></tr>`;
+  }).join('');
+}
+
 function renderPredictions() {
+  renderRaces();
   const latest = latestPredictions(ALL_DAILY);
   const chartsWrap = document.getElementById('predChartsWrap');
   renderRecordsTable(latest);
@@ -962,4 +1048,3 @@ init();
 </script>
 </body>
 </html>
-
