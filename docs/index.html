@@ -860,6 +860,8 @@ function renderRecordsTable(latest) {
 
 // Provas cujo nome no Garmin não segue o padrão "Local - Prova": data -> [local, descrição]
 const RACE_EXTRA = {
+  '2025-05-24': ['Blumenau', '10km'],
+  '2025-08-09': ['Joinville', '10km'],
   '2026-02-22': ['Lages', 'meia maratona'],
   '2026-04-26': ['Balneário Camboriú', 'meia maratona'],
   '2026-05-31': ['João Pessoa', 'meia maratona'],
@@ -869,6 +871,8 @@ const RACE_EXTRA = {
 };
 // Tempo no percurso oficial (interpolado a partir das parciais do Garmin): data -> [distância oficial em m, tempo em s]
 const RACE_OFFICIAL = {
+  '2025-05-24': [10000, 3011],
+  '2025-08-09': [10000, 2872],
   '2025-10-26': [21097.5, 6180],
   '2025-11-09': [10000, 2494],
   '2025-12-07': [10000, 2576],
